@@ -236,3 +236,38 @@
         flex-direction: column;
     }
 }
+
+/* ==========================================================
+   Diagnostics polish
+   ========================================================== */
+
+.sat-diagnostic-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.sat-diagnostic-card-top > span:first-child {
+    margin-bottom: 0;
+}
+
+.sat-diagnostic-card strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.sat-diagnostic-card p {
+    margin: 0;
+    color: #646970;
+    line-height: 1.5;
+}
+
+.sat-diagnostic-good {
+    border-left: 4px solid #00a32a;
+}
+
+.sat-diagnostic-warning {
+    border-left: 4px solid #dba617;
+}

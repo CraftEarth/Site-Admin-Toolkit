@@ -211,3 +211,13 @@ The diagnostics panel is restricted to users with the WordPress
 Debug logs can contain sensitive technical information and should never
 be exposed publicly.
 
+
+## v1.3.1 - Diagnostics UI Polish
+
+- Converted PHP boolean values from `1/0` to `Enabled/Disabled`
+- Added readable status badges to diagnostics
+- Added contextual explanations for debug settings
+- Clarified WP_DEBUG_DISPLAY behavior when WP_DEBUG is disabled
+- Added production warnings for browser-displayed PHP errors
+- Improved diagnostic card styling
+

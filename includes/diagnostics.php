@@ -31,9 +31,7 @@ function sat_tail_file($file, $lines = 50)
 
         fseek($handle, $position);
 
-        $buffer =
-            fread($handle, $read_size) .
-            $buffer;
+        $buffer = fread($handle, $read_size) . $buffer;
 
         if (substr_count($buffer, "\n") > $lines) {
             break;
@@ -42,19 +40,39 @@ function sat_tail_file($file, $lines = 50)
 
     fclose($handle);
 
-    $rows = preg_split(
-        '/\r\n|\r|\n/',
-        trim($buffer)
-    );
+    $rows = preg_split('/\r\n|\r|\n/', trim($buffer));
 
     if (!$rows) {
         return [];
     }
 
-    return array_slice(
-        $rows,
-        -$lines
-    );
+    return array_slice($rows, -$lines);
+}
+
+
+/**
+ * Normalize PHP / WordPress boolean-style config values.
+ */
+function sat_diag_bool_label($value)
+{
+    $enabled_values = [
+        true,
+        1,
+        '1',
+        'on',
+        'On',
+        'ON',
+        'yes',
+        'Yes',
+        'YES',
+        'true',
+        'True',
+        'TRUE',
+    ];
+
+    return in_array($value, $enabled_values, true)
+        ? 'Enabled'
+        : 'Disabled';
 }
 
 
@@ -68,8 +86,7 @@ function sat_get_diagnostics()
         DIRECTORY_SEPARATOR .
         'debug.log';
 
-    $debug_log_exists =
-        file_exists($debug_log_file);
+    $debug_log_exists = file_exists($debug_log_file);
 
     $debug_log_readable =
         $debug_log_exists &&
@@ -106,60 +123,69 @@ function sat_get_diagnostics()
         ini_get('error_log');
 
     return [
-        'wp_debug' =>
-            $wp_debug,
-
-        'wp_debug_log' =>
-            $wp_debug_log,
-
-        'wp_debug_display' =>
-            $wp_debug_display,
-
-        'display_errors' =>
-            $display_errors,
-
-        'php_error_log' =>
-            $php_error_log,
-
-        'debug_log_file' =>
-            $debug_log_file,
-
-        'debug_log_exists' =>
-            $debug_log_exists,
-
-        'debug_log_readable' =>
-            $debug_log_readable,
-
-        'debug_log_size' =>
-            $debug_log_size,
-
-        'debug_log_modified' =>
-            $debug_log_modified,
-
+        'wp_debug' => $wp_debug,
+        'wp_debug_log' => $wp_debug_log,
+        'wp_debug_display' => $wp_debug_display,
+        'display_errors' => $display_errors,
+        'php_error_log' => $php_error_log,
+        'debug_log_file' => $debug_log_file,
+        'debug_log_exists' => $debug_log_exists,
+        'debug_log_readable' => $debug_log_readable,
+        'debug_log_size' => $debug_log_size,
+        'debug_log_modified' => $debug_log_modified,
         'recent_lines' =>
             $debug_log_readable
-                ? sat_tail_file(
-                    $debug_log_file,
-                    50
-                )
+                ? sat_tail_file($debug_log_file, 50)
                 : [],
     ];
 }
 
 
 /**
- * Convert boolean-like values into readable text.
+ * Render one diagnostic card.
  */
-function sat_diag_status_text($value)
+function sat_render_diag_card($label, $value, $status, $message = '')
 {
-    return $value
-        ? 'Enabled'
-        : 'Disabled';
+    ?>
+    <div class="sat-diagnostic-card sat-diagnostic-<?php echo esc_attr($status); ?>">
+
+        <div class="sat-diagnostic-card-top">
+
+            <span>
+                <?php echo esc_html($label); ?>
+            </span>
+
+            <span class="sat-status sat-status-<?php echo esc_attr($status); ?>">
+                <?php
+                echo esc_html(
+                    $status === 'good'
+                        ? 'Good'
+                        : 'Review'
+                );
+                ?>
+            </span>
+
+        </div>
+
+        <strong>
+            <?php echo esc_html($value); ?>
+        </strong>
+
+        <?php if ($message !== '') : ?>
+
+            <p>
+                <?php echo esc_html($message); ?>
+            </p>
+
+        <?php endif; ?>
+
+    </div>
+    <?php
 }
 
 
 /**
- * Render diagnostic panel.
+ * Render diagnostics.
  */
 function sat_render_diagnostics()
 {
@@ -167,8 +193,65 @@ function sat_render_diagnostics()
         return;
     }
 
-    $diag =
-        sat_get_diagnostics();
+    $diag = sat_get_diagnostics();
+
+    $wp_debug_status =
+        $diag['wp_debug']
+            ? 'warning'
+            : 'good';
+
+    $wp_debug_log_enabled =
+        !empty($diag['wp_debug_log']);
+
+    $wp_debug_log_status =
+        $wp_debug_log_enabled
+            ? 'warning'
+            : 'good';
+
+    if ($diag['wp_debug_display'] === null) {
+
+        $debug_display_label = 'Default';
+        $debug_display_status = 'good';
+
+        $debug_display_message =
+            'WP_DEBUG_DISPLAY is not explicitly defined and WordPress will use its default behavior.';
+
+    } else {
+
+        $debug_display_label =
+            sat_diag_bool_label(
+                $diag['wp_debug_display']
+            );
+
+        $debug_display_status =
+            $diag['wp_debug_display']
+                ? 'warning'
+                : 'good';
+
+        if (
+            $diag['wp_debug_display'] &&
+            !$diag['wp_debug']
+        ) {
+            $debug_display_message =
+                'Display is enabled, but WP_DEBUG is disabled, so WordPress debugging is not currently active.';
+        } elseif ($diag['wp_debug_display']) {
+            $debug_display_message =
+                'Debug output may be displayed to visitors while debugging is enabled.';
+        } else {
+            $debug_display_message =
+                'Debug output is not configured to display publicly.';
+        }
+    }
+
+    $php_display_label =
+        sat_diag_bool_label(
+            $diag['display_errors']
+        );
+
+    $php_display_status =
+        $php_display_label === 'Enabled'
+            ? 'warning'
+            : 'good';
 
     ?>
     <div class="sat-panel sat-diagnostics">
@@ -182,8 +265,8 @@ function sat_render_diagnostics()
                 </h2>
 
                 <p>
-                    Inspect WordPress and PHP debugging
-                    configuration and recent WordPress log entries.
+                    Inspect WordPress and PHP debugging configuration
+                    and recent WordPress log entries.
                 </p>
 
             </div>
@@ -207,93 +290,45 @@ function sat_render_diagnostics()
 
         <div class="sat-diagnostic-grid">
 
-            <div class="sat-diagnostic-card">
+            <?php
+            sat_render_diag_card(
+                'WP_DEBUG',
+                sat_diag_bool_label(
+                    $diag['wp_debug']
+                ),
+                $wp_debug_status,
+                $diag['wp_debug']
+                    ? 'WordPress debugging is enabled. Review this before using the site in production.'
+                    : 'WordPress debugging is disabled.'
+            );
 
-                <span>
-                    WP_DEBUG
-                </span>
+            sat_render_diag_card(
+                'WP_DEBUG_LOG',
+                sat_diag_bool_label(
+                    $wp_debug_log_enabled
+                ),
+                $wp_debug_log_status,
+                $wp_debug_log_enabled
+                    ? 'WordPress debug logging is enabled.'
+                    : 'WordPress debug logging is disabled.'
+            );
 
-                <strong>
-                    <?php
-                    echo esc_html(
-                        sat_diag_status_text(
-                            $diag['wp_debug']
-                        )
-                    );
-                    ?>
-                </strong>
+            sat_render_diag_card(
+                'WP_DEBUG_DISPLAY',
+                $debug_display_label,
+                $debug_display_status,
+                $debug_display_message
+            );
 
-            </div>
-
-
-            <div class="sat-diagnostic-card">
-
-                <span>
-                    WP_DEBUG_LOG
-                </span>
-
-                <strong>
-                    <?php
-                    echo esc_html(
-                        sat_diag_status_text(
-                            !empty(
-                                $diag['wp_debug_log']
-                            )
-                        )
-                    );
-                    ?>
-                </strong>
-
-            </div>
-
-
-            <div class="sat-diagnostic-card">
-
-                <span>
-                    WP_DEBUG_DISPLAY
-                </span>
-
-                <strong>
-                    <?php
-
-                    if (
-                        $diag['wp_debug_display']
-                        === null
-                    ) {
-                        echo 'Default';
-                    } else {
-                        echo esc_html(
-                            sat_diag_status_text(
-                                $diag[
-                                    'wp_debug_display'
-                                ]
-                            )
-                        );
-                    }
-
-                    ?>
-                </strong>
-
-            </div>
-
-
-            <div class="sat-diagnostic-card">
-
-                <span>
-                    PHP display_errors
-                </span>
-
-                <strong>
-                    <?php
-                    echo esc_html(
-                        $diag['display_errors']
-                            ? $diag['display_errors']
-                            : 'Off'
-                    );
-                    ?>
-                </strong>
-
-            </div>
+            sat_render_diag_card(
+                'PHP display_errors',
+                $php_display_label,
+                $php_display_status,
+                $php_display_label === 'Enabled'
+                    ? 'PHP errors may be displayed in the browser. Disable this on production sites.'
+                    : 'PHP errors are not configured to display publicly.'
+            );
+            ?>
 
         </div>
 
@@ -307,7 +342,6 @@ function sat_render_diagnostics()
             <tbody>
 
                 <tr>
-
                     <td>
                         <strong>
                             WordPress Debug Log
@@ -317,20 +351,15 @@ function sat_render_diagnostics()
                     <td>
                         <?php
                         echo esc_html(
-                            $diag[
-                                'debug_log_exists'
-                            ]
+                            $diag['debug_log_exists']
                                 ? 'Detected'
                                 : 'Not Found'
                         );
                         ?>
                     </td>
-
                 </tr>
 
-
                 <tr>
-
                     <td>
                         <strong>
                             Log Readable
@@ -340,20 +369,15 @@ function sat_render_diagnostics()
                     <td>
                         <?php
                         echo esc_html(
-                            $diag[
-                                'debug_log_readable'
-                            ]
+                            $diag['debug_log_readable']
                                 ? 'Yes'
                                 : 'No'
                         );
                         ?>
                     </td>
-
                 </tr>
 
-
                 <tr>
-
                     <td>
                         <strong>
                             Log Size
@@ -364,19 +388,14 @@ function sat_render_diagnostics()
                         <?php
                         echo esc_html(
                             size_format(
-                                $diag[
-                                    'debug_log_size'
-                                ]
+                                $diag['debug_log_size']
                             )
                         );
                         ?>
                     </td>
-
                 </tr>
 
-
                 <tr>
-
                     <td>
                         <strong>
                             Last Modified
@@ -386,18 +405,12 @@ function sat_render_diagnostics()
                     <td>
                         <?php
 
-                        if (
-                            $diag[
-                                'debug_log_modified'
-                            ]
-                        ) {
+                        if ($diag['debug_log_modified']) {
 
                             echo esc_html(
                                 wp_date(
                                     'Y-m-d H:i:s',
-                                    $diag[
-                                        'debug_log_modified'
-                                    ]
+                                    $diag['debug_log_modified']
                                 )
                             );
 
@@ -409,12 +422,9 @@ function sat_render_diagnostics()
 
                         ?>
                     </td>
-
                 </tr>
 
-
                 <tr>
-
                     <td>
                         <strong>
                             PHP Error Log
@@ -424,17 +434,12 @@ function sat_render_diagnostics()
                     <td>
                         <?php
                         echo esc_html(
-                            $diag[
-                                'php_error_log'
-                            ]
-                                ? $diag[
-                                    'php_error_log'
-                                ]
+                            $diag['php_error_log']
+                                ? $diag['php_error_log']
                                 : 'Not configured'
                         );
                         ?>
                     </td>
-
                 </tr>
 
             </tbody>
@@ -453,60 +458,30 @@ function sat_render_diagnostics()
                 wp-content/debug.log when available.
             </p>
 
-            <?php
-            if (
-                !$diag['debug_log_exists']
-            ) :
-            ?>
+            <?php if (!$diag['debug_log_exists']) : ?>
 
                 <div class="sat-log-empty">
-
-                    No WordPress debug.log file
-                    currently exists.
-
+                    No WordPress debug.log file currently exists.
                 </div>
 
-            <?php
-            elseif (
-                !$diag['debug_log_readable']
-            ) :
-            ?>
+            <?php elseif (!$diag['debug_log_readable']) : ?>
 
                 <div class="sat-log-empty">
-
-                    The WordPress debug.log file
-                    exists but cannot be read.
-
+                    The WordPress debug.log file exists but cannot be read.
                 </div>
 
-            <?php
-            elseif (
-                empty(
-                    $diag['recent_lines']
-                )
-            ) :
-            ?>
+            <?php elseif (empty($diag['recent_lines'])) : ?>
 
                 <div class="sat-log-empty">
-
                     The debug log is empty.
-
                 </div>
 
-            <?php
-            else :
-            ?>
+            <?php else : ?>
 
                 <pre class="sat-log-viewer"><?php
 
-                    foreach (
-                        $diag['recent_lines']
-                        as $line
-                    ) {
-
-                        echo esc_html($line) .
-                            "\n";
-
+                    foreach ($diag['recent_lines'] as $line) {
+                        echo esc_html($line) . "\n";
                     }
 
                 ?></pre>
@@ -524,11 +499,9 @@ function sat_render_diagnostics()
 
             Debug logs can contain file paths,
             database errors, email addresses,
-            request details, and other sensitive
-            information.
+            request details, and other sensitive information.
 
-            Do not expose this screen to
-            non-administrators.
+            Do not expose this screen to non-administrators.
 
         </div>
 
