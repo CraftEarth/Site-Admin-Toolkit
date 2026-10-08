@@ -102,3 +102,35 @@ William Murphy / CraftEarth
 
 GitHub:
 https://github.com/CraftEarth
+
+## v1.1.0 - Maintenance Mode
+
+Site Admin Toolkit now includes a built-in maintenance mode for temporarily
+taking a WordPress site offline while administrators continue working.
+
+### Features
+
+- Enable or disable maintenance mode from Site Toolkit
+- Custom maintenance page title
+- Custom visitor message
+- Optional estimated return message
+- Logged-in administrators automatically bypass maintenance mode
+- HTTP 503 Service Unavailable response
+- Retry-After header
+- WordPress AJAX requests remain available
+- WordPress cron remains available
+- REST API requests remain available
+
+### Testing Maintenance Mode
+
+Open:
+
+Site Toolkit ? Maintenance Mode
+
+Enable maintenance mode and save your settings.
+
+Logged-in administrators will continue seeing the normal website.
+
+To view the visitor experience, open the website in an incognito/private
+browser window while logged out.
+
