@@ -275,3 +275,105 @@ It does not:
 Future maintenance actions will require explicit administrator confirmation
 and should only be used after verifying a current backup.
 
+
+## v1.6.0 - Activity & Threat Monitor
+
+Site Admin Toolkit now includes security activity monitoring and
+basic behavioral threat correlation.
+
+### Monitored Activity
+
+- Successful logins
+- Failed login attempts
+- User logouts
+- New WordPress users
+- Plugin activation
+- Plugin deactivation
+- REST API requests
+- Inbound POST requests
+- HTTP 404 reconnaissance
+- XML-RPC requests
+- Outbound WordPress HTTP/API traffic
+
+### Threat Correlation
+
+Events are assigned risk values and correlated by IP address over the
+previous 24 hours.
+
+Risk classifications:
+
+- Normal
+- Suspicious
+- High Risk
+- Critical
+
+### Local Security Testing
+
+A safe test-event generator allows developers to verify the complete
+monitoring pipeline on localhost without exposing the WordPress
+installation publicly.
+
+### Privacy
+
+The activity monitor does not store:
+
+- Passwords
+- Cookies
+- Authorization headers
+- API tokens
+- Request bodies
+- URL query strings
+
+Activity logs are automatically retained for 14 days in this version.
+
+
+## v1.6.0 - Activity & Threat Monitor
+
+Site Admin Toolkit now includes security activity monitoring and
+basic behavioral threat correlation.
+
+### Monitored Activity
+
+- Successful logins
+- Failed login attempts
+- User logouts
+- New WordPress users
+- Plugin activation
+- Plugin deactivation
+- REST API requests
+- Inbound POST requests
+- HTTP 404 reconnaissance
+- XML-RPC requests
+- Outbound WordPress HTTP/API traffic
+
+### Threat Correlation
+
+Events are assigned risk values and correlated by IP address over the
+previous 24 hours.
+
+Risk classifications:
+
+- Normal
+- Suspicious
+- High Risk
+- Critical
+
+### Local Security Testing
+
+A safe test-event generator allows developers to verify the complete
+monitoring pipeline on localhost without exposing the WordPress
+installation publicly.
+
+### Privacy
+
+The activity monitor does not store:
+
+- Passwords
+- Cookies
+- Authorization headers
+- API tokens
+- Request bodies
+- URL query strings
+
+Activity logs are automatically retained for 14 days in this version.
+

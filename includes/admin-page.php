@@ -237,9 +237,21 @@ function sat_admin_page()
             sat_render_database_health();
         }
         ?>
+
+        <?php
+        if (
+            function_exists(
+                'sat_render_activity_monitor'
+            )
+        ) {
+            sat_render_activity_monitor();
+        }
+        ?>
 </div>
     <?php
 }
+
+
 
 
 

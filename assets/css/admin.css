@@ -289,3 +289,51 @@
 .sat-database-health h3 {
     margin-top: 28px;
 }
+
+/* ==========================================================
+   Activity & Threat Monitor
+   ========================================================== */
+
+.sat-activity-table code {
+    font-size: 11px;
+}
+
+.sat-event-detail {
+    margin-top: 5px;
+    color: #646970;
+    font-size: 12px;
+    max-width: 420px;
+}
+
+.sat-activity-monitor h3 {
+    margin-top: 30px;
+}
+
+.sat-activity-table td {
+    vertical-align: top;
+}
+
+
+/* ==========================================================
+   Activity & Threat Monitor
+   ========================================================== */
+
+.sat-activity-table code {
+    font-size: 11px;
+}
+
+.sat-event-detail {
+    margin-top: 5px;
+    color: #646970;
+    font-size: 12px;
+    max-width: 420px;
+}
+
+.sat-activity-monitor h3 {
+    margin-top: 30px;
+}
+
+.sat-activity-table td {
+    vertical-align: top;
+}
+
