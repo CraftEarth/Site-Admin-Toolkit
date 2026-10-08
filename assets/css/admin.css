@@ -337,3 +337,27 @@
     vertical-align: top;
 }
 
+
+/* ==========================================================
+   Threat Correlation
+   ========================================================== */
+
+.sat-threat-correlation h3 {
+    margin-top: 30px;
+}
+
+.sat-threat-summary-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(230px, 1fr)
+        );
+    gap: 16px;
+    margin-top: 14px;
+}
+
+.sat-threat-correlation table td {
+    vertical-align: top;
+}
+

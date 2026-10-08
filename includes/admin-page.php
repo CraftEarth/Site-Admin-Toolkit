@@ -247,9 +247,20 @@ function sat_admin_page()
             sat_render_activity_monitor();
         }
         ?>
+
+        <?php
+        if (
+            function_exists(
+                'sat_render_threat_correlation'
+            )
+        ) {
+            sat_render_threat_correlation();
+        }
+        ?>
 </div>
     <?php
 }
+
 
 
 

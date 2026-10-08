@@ -377,3 +377,33 @@ The activity monitor does not store:
 
 Activity logs are automatically retained for 14 days in this version.
 
+
+## v1.7.0 - Advanced Threat Correlation
+
+Site Admin Toolkit now correlates security events into higher-level
+behavior patterns.
+
+### Detection
+
+- Failed-login bursts
+- Multi-username credential spraying
+- 404 reconnaissance activity
+- XML-RPC request bursts
+- High POST request volume
+- High REST API volume
+- Administrative account creation
+- Plugin activation/deactivation activity
+
+### Outbound Visibility
+
+Outbound WordPress HTTP/API traffic is grouped by destination domain,
+including request counts, failures, and last-seen timestamps.
+
+### Incident Reporting
+
+Administrators can export the current 24-hour correlated threat view
+as a CSV incident report.
+
+Threat classifications represent behavioral indicators and should not
+be interpreted as definitive attribution of malicious intent.
+
