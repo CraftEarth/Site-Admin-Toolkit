@@ -271,3 +271,21 @@
 .sat-diagnostic-warning {
     border-left: 4px solid #dba617;
 }
+
+/* ==========================================================
+   Database Health
+   ========================================================== */
+
+.sat-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 14px;
+}
+
+.sat-table-scroll table {
+    min-width: 760px;
+}
+
+.sat-database-health h3 {
+    margin-top: 28px;
+}

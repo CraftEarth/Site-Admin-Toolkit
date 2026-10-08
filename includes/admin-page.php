@@ -227,8 +227,19 @@ function sat_admin_page()
             sat_render_diagnostics();
         }
         ?>
+
+        <?php
+        if (
+            function_exists(
+                'sat_render_database_health'
+            )
+        ) {
+            sat_render_database_health();
+        }
+        ?>
 </div>
     <?php
 }
+
 
 

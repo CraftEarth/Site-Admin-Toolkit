@@ -231,3 +231,47 @@ be exposed publicly.
 - Added production warnings for browser-displayed PHP errors
 - Improved diagnostic card styling
 
+
+## v1.5.0 - Database Health & Safe Maintenance
+
+Site Admin Toolkit now includes a read-only WordPress database inspection
+dashboard.
+
+### Database Health
+
+- Total WordPress database table size
+- Table overhead
+- Autoloaded option count
+- Autoloaded option size
+- Post revision count
+- Trashed post count
+- Spam comment count
+- Expired transient timeout count
+- WordPress database prefix
+
+### Table Inspection
+
+The toolkit displays the ten largest WordPress tables along with:
+
+- Storage engine
+- Approximate row count
+- Total table size
+- Table overhead
+- Database collation
+
+### Safety
+
+Version 1.5 performs inspection only.
+
+It does not:
+
+- Delete revisions
+- Delete transients
+- Remove spam
+- Empty trash
+- Optimize database tables
+- Modify WordPress records
+
+Future maintenance actions will require explicit administrator confirmation
+and should only be used after verifying a current backup.
+
