@@ -107,7 +107,12 @@ function sat_admin_page()
 
         </div>
 
-        <div class="sat-panel">
+                <?php
+        if (function_exists('sat_render_site_health')) {
+            sat_render_site_health();
+        }
+        ?>
+<div class="sat-panel">
 
             <h2>System Information</h2>
 
@@ -212,6 +217,18 @@ function sat_admin_page()
 
         </div>
 
-    </div>
+    
+        <?php
+        if (
+            function_exists(
+                'sat_render_diagnostics'
+            )
+        ) {
+            sat_render_diagnostics();
+        }
+        ?>
+</div>
     <?php
 }
+
+

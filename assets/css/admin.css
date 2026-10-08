@@ -55,3 +55,184 @@
     border-left: 4px solid #2271b1;
     background: #f0f6fc;
 }
+
+/* ==========================================================
+   Site Health
+   ========================================================== */
+
+.sat-health-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.sat-health-heading h2 {
+    margin-bottom: 6px;
+}
+
+.sat-health-heading p {
+    margin-top: 0;
+    color: #646970;
+}
+
+.sat-health-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(230px, 1fr)
+        );
+    gap: 16px;
+    margin: 20px 0 28px;
+}
+
+.sat-health-card {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 18px;
+}
+
+.sat-health-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.sat-health-value {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 16px 0 8px;
+}
+
+.sat-health-card p {
+    margin-bottom: 0;
+    color: #646970;
+    line-height: 1.5;
+}
+
+.sat-status {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sat-status-good {
+    background: #edfaef;
+    color: #116329;
+}
+
+.sat-status-warning {
+    background: #fcf3cf;
+    color: #7a5d00;
+}
+
+.sat-status-critical {
+    background: #fcdddd;
+    color: #8a2424;
+}
+
+@media (max-width: 600px) {
+
+    .sat-health-heading {
+        flex-direction: column;
+    }
+}
+
+/* ==========================================================
+   Diagnostics
+   ========================================================== */
+
+.sat-diagnostics-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.sat-diagnostics-heading h2 {
+    margin-bottom: 6px;
+}
+
+.sat-diagnostics-heading p {
+    margin-top: 0;
+    color: #646970;
+}
+
+.sat-diagnostic-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(180px, 1fr)
+        );
+    gap: 16px;
+    margin: 20px 0 28px;
+}
+
+.sat-diagnostic-card {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 18px;
+}
+
+.sat-diagnostic-card span {
+    display: block;
+    color: #646970;
+    margin-bottom: 10px;
+}
+
+.sat-diagnostic-card strong {
+    font-size: 20px;
+}
+
+.sat-log-section {
+    margin-top: 28px;
+}
+
+.sat-log-viewer {
+    background: #1d2327;
+    color: #f0f0f1;
+    border-radius: 8px;
+    padding: 18px;
+    max-height: 420px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family:
+        Consolas,
+        Monaco,
+        monospace;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.sat-log-empty {
+    background: #f6f7f7;
+    border: 1px dashed #c3c4c7;
+    border-radius: 8px;
+    padding: 22px;
+    color: #646970;
+}
+
+.sat-diagnostic-note {
+    margin-top: 22px;
+    background: #fcf3cf;
+    border-left: 4px solid #dba617;
+    padding: 14px 16px;
+}
+
+@media (max-width: 600px) {
+
+    .sat-diagnostics-heading {
+        flex-direction: column;
+    }
+}
