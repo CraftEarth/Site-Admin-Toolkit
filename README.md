@@ -407,3 +407,39 @@ as a CSV incident report.
 Threat classifications represent behavioral indicators and should not
 be interpreted as definitive attribution of malicious intent.
 
+
+## v1.8.0 - Tabbed Security Console & File Integrity
+
+Site Admin Toolkit now uses a tabbed operations and security console.
+
+### Console Navigation
+
+- Overview
+- Health
+- Database
+- Traffic
+- Threats
+- Files
+- Logs
+- Settings
+
+### File Integrity & Forensics
+
+Administrators can establish a SHA-256 file baseline and compare future
+scans against the known-good state.
+
+The toolkit detects:
+
+- New files
+- Modified files
+- Deleted files
+- Executable PHP-like files inside WordPress uploads
+- Important filesystem permissions
+- Writable WordPress directories
+
+### Forensics
+
+File integrity findings are indicators and should be reviewed in context.
+Legitimate WordPress, plugin, theme and administrator updates can modify
+files.
+
