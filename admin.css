@@ -1,0 +1,57 @@
+.sat-wrap {
+    max-width: 1200px;
+}
+
+.sat-intro {
+    color: #646970;
+    font-size: 15px;
+    margin-bottom: 24px;
+}
+
+.sat-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(180px, 1fr)
+        );
+    gap: 16px;
+    margin: 24px 0;
+}
+
+.sat-card {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.sat-card span {
+    display: block;
+    color: #646970;
+    margin-bottom: 8px;
+}
+
+.sat-card strong {
+    display: block;
+    font-size: 24px;
+    color: #1d2327;
+}
+
+.sat-panel {
+    margin-top: 22px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 22px;
+}
+
+.sat-panel h2 {
+    margin-top: 0;
+}
+
+.sat-announcement {
+    padding: 15px;
+    border-left: 4px solid #2271b1;
+    background: #f0f6fc;
+}
