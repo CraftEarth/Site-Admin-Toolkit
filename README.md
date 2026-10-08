@@ -488,3 +488,44 @@ Requests blocked by a firewall, reverse proxy, CDN, Apache/Nginx rule or
 other upstream system may not appear unless server access-log ingestion
 is added.
 
+
+## v2.0.0 - Integrations & Alert Delivery
+
+Site Admin Toolkit 2.0 introduces an optional integrations layer for
+external security alert delivery.
+
+### Integrations
+
+- Email security alerts
+- Generic JSON webhook alerts
+- Optional Zoho integration
+- Zoho OAuth connection testing
+- Zoho Flow webhook delivery
+- Manual integration testing
+- Automatic hourly alert dispatch
+- Duplicate alert suppression
+
+### Zoho Security
+
+Zoho OAuth credentials are not stored in WordPress options.
+
+When direct Zoho OAuth support is enabled, define these values in
+wp-config.php:
+
+    define('SAT_ZOHO_CLIENT_ID', 'your-client-id');
+    define('SAT_ZOHO_CLIENT_SECRET', 'your-client-secret');
+    define('SAT_ZOHO_REFRESH_TOKEN', 'your-refresh-token');
+
+The plugin reads these constants at runtime.
+
+Access tokens obtained from Zoho are temporary and are not persisted by
+Site Admin Toolkit.
+
+### Optional Design
+
+Every integration is optional.
+
+Sites that do not use Zoho, webhooks, or email alerts can leave those
+features disabled without affecting diagnostics, monitoring, threat
+correlation, file integrity, or other toolkit features.
+

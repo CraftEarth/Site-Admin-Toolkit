@@ -586,3 +586,69 @@
     width: 150px;
 }
 
+
+/* ==========================================================
+   v2.0 Integrations Center
+   ========================================================== */
+
+.sat-integration-section {
+    border-top: 1px solid #dcdcde;
+    padding: 22px 0;
+}
+
+.sat-integration-section:first-of-type {
+    border-top: 0;
+}
+
+.sat-integration-section h3 {
+    margin-top: 0;
+}
+
+.sat-integration-section h4 {
+    margin-top: 22px;
+}
+
+.sat-integration-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.sat-integration-actions form {
+    margin: 0;
+}
+
+
+/* ==========================================================
+   v2.0 Integrations Center
+   ========================================================== */
+
+.sat-integration-section {
+    border-top: 1px solid #dcdcde;
+    padding: 22px 0;
+}
+
+.sat-integration-section:first-of-type {
+    border-top: 0;
+}
+
+.sat-integration-section h3 {
+    margin-top: 0;
+}
+
+.sat-integration-section h4 {
+    margin-top: 22px;
+}
+
+.sat-integration-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.sat-integration-actions form {
+    margin: 0;
+}
+

@@ -38,6 +38,7 @@ function sat_console_tabs()
         'alerts' => 'Alerts',
         'files' => 'Files',
         'logs' => 'Logs',
+        'integrations' => 'Integrations',
         'settings' => 'Settings',
     ];
 }
@@ -526,6 +527,19 @@ function sat_admin_page()
                     break;
 
 
+                case 'integrations':
+
+                    if (
+                        function_exists(
+                            'sat_render_integrations'
+                        )
+                    ) {
+                        sat_render_integrations();
+                    }
+
+                    break;
+
+
                 case 'settings':
 
                     ?>
@@ -586,4 +600,6 @@ function sat_admin_page()
     </div>
     <?php
 }
+
+
 
