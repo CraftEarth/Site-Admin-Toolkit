@@ -3,6 +3,16 @@
 A lightweight WordPress administration plugin built for site owners,
 developers, and support specialists.
 
+## Screenshots
+
+### Site Health & Updates
+
+![Site Health Dashboard](assets/screenshots/site-health.png)
+
+### Error Log & Diagnostics
+
+![Diagnostics Dashboard](assets/screenshots/diagnostics.png)
+
 ## Features
 
 - Custom WordPress admin menu
