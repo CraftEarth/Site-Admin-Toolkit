@@ -33,7 +33,9 @@ function sat_console_tabs()
         'health' => 'Health',
         'database' => 'Database',
         'traffic' => 'Traffic',
+        'network' => 'Network',
         'threats' => 'Threats',
+        'alerts' => 'Alerts',
         'files' => 'Files',
         'logs' => 'Logs',
         'settings' => 'Settings',
@@ -459,6 +461,19 @@ function sat_admin_page()
                     break;
 
 
+                case 'network':
+
+                    if (
+                        function_exists(
+                            'sat_render_network_analytics'
+                        )
+                    ) {
+                        sat_render_network_analytics();
+                    }
+
+                    break;
+
+
                 case 'threats':
 
                     if (
@@ -467,6 +482,19 @@ function sat_admin_page()
                         )
                     ) {
                         sat_render_threat_correlation();
+                    }
+
+                    break;
+
+
+                case 'alerts':
+
+                    if (
+                        function_exists(
+                            'sat_render_alert_console'
+                        )
+                    ) {
+                        sat_render_alert_console();
                     }
 
                     break;
@@ -558,3 +586,4 @@ function sat_admin_page()
     </div>
     <?php
 }
+

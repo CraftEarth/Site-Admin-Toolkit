@@ -443,3 +443,48 @@ File integrity findings are indicators and should be reviewed in context.
 Legitimate WordPress, plugin, theme and administrator updates can modify
 files.
 
+
+## v1.9.0 - Network Analytics & Security Alerts
+
+Site Admin Toolkit now includes deeper WordPress-level network analytics
+and configurable security alerting.
+
+### Network Analytics
+
+- Top source IP addresses
+- HTTP request method distribution
+- Most requested endpoints
+- Top 404 reconnaissance targets
+- HTTP response-code distribution
+- REST request totals
+- Inbound and outbound activity totals
+- Slow request detection
+- Outbound domain inventory
+- Outbound destination baselining
+- New outbound domain detection
+- CSV network report export
+
+### Security Alerts
+
+The alert engine correlates information from:
+
+- Threat correlation
+- Failed authentication
+- Reconnaissance activity
+- File integrity monitoring
+- Outbound-domain baselines
+
+Administrators can configure:
+
+- Failed login threshold
+- 404 reconnaissance threshold
+- Critical correlated-risk threshold
+
+### Scope
+
+Request analytics represent activity processed by WordPress/PHP.
+
+Requests blocked by a firewall, reverse proxy, CDN, Apache/Nginx rule or
+other upstream system may not appear unless server access-log ingestion
+is added.
+

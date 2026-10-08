@@ -497,3 +497,92 @@
         margin: 0;
     }
 }
+
+/* ==========================================================
+   v1.9 Network Analytics & Alerts
+   ========================================================== */
+
+.sat-inline-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 14px 0 24px;
+}
+
+.sat-inline-stats > div {
+    min-width: 110px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.sat-inline-stats strong {
+    display: block;
+    font-size: 18px;
+}
+
+.sat-inline-stats span {
+    display: block;
+    color: #646970;
+    margin-top: 5px;
+}
+
+.sat-network-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.sat-network-actions form {
+    margin: 0;
+}
+
+.sat-alert-list {
+    display: grid;
+    gap: 12px;
+}
+
+.sat-alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    border: 1px solid #dcdcde;
+    border-left-width: 5px;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fff;
+}
+
+.sat-alert-warning {
+    border-left-color: #dba617;
+}
+
+.sat-alert-critical {
+    border-left-color: #d63638;
+}
+
+.sat-alert-item p {
+    margin: 6px 0;
+}
+
+.sat-alert-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 18px;
+}
+
+.sat-alert-settings label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.sat-alert-settings input[type="number"] {
+    width: 150px;
+}
+

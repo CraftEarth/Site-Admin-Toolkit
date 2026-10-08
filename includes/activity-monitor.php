@@ -1264,3 +1264,4 @@ function sat_render_activity_monitor()
     </div>
     <?php
 }
+
