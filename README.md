@@ -406,3 +406,44 @@ The goal is to provide administrators with enough technical detail to understand
 GitHub: https://github.com/CraftEarth
 
 LinkedIn: https://www.linkedin.com/in/william-murphy-ab262477/
+
+---
+
+## Premium Framework
+
+Version 2.1 introduces the extensible Site Admin Toolkit Premium foundation.
+
+The architecture includes:
+
+- Central feature registry
+- Free/Premium feature gates
+- Entitlement management
+- License activation client
+- Coupon redemption client
+- Installation identity
+- API-ready licensing layer
+- Local developer Premium mode
+
+Future modules should use:
+
+```php
+sat_feature_enabled('feature_name')
+```
+
+Premium coupon creation is intentionally controlled by the private
+licensing server rather than individual customer WordPress installations.
+
+For local development only, Premium features can be unlocked in
+`wp-config.php`:
+
+```php
+define('SAT_LICENSE_DEV_MODE', true);
+```
+
+When the private licensing server is deployed, its base URL can be set with:
+
+```php
+define('SAT_LICENSE_API_URL', 'https://licenses.example.com/');
+```
+
+Do not use development mode on customer production installations.

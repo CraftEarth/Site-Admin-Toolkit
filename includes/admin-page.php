@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -38,6 +38,7 @@ function sat_console_tabs()
         'alerts' => 'Alerts',
         'files' => 'Files',
         'logs' => 'Logs',
+        'premium' => 'Premium',
         'integrations' => 'Integrations',
         'settings' => 'Settings',
     ];
@@ -527,6 +528,19 @@ function sat_admin_page()
                     break;
 
 
+
+                case 'premium':
+
+                    if (
+                        function_exists(
+                            'sat_render_premium'
+                        )
+                    ) {
+                        sat_render_premium();
+                    }
+
+                    break;
+
                 case 'integrations':
 
                     if (
@@ -600,6 +614,7 @@ function sat_admin_page()
     </div>
     <?php
 }
+
 
 
 
