@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -48,10 +48,6 @@ function sat_apply_server_entitlement_response($response)
 
     sat_save_entitlement($entitlement);
 
-    /*
-     * Store only an opaque installation token when supplied.
-     * The raw customer license key/coupon is never persisted.
-     */
     if (!empty($response['installation_token'])) {
         update_option(
             'sat_license_installation_token',
@@ -60,7 +56,173 @@ function sat_apply_server_entitlement_response($response)
         );
     }
 
+    if (!empty($response['policy']) && is_array($response['policy'])) {
+        sat_save_license_policy($response['policy']);
+    }
+
+    if (!empty($response['activation']) && is_array($response['activation'])) {
+        sat_save_license_activation($response['activation']);
+    }
+
     return true;
+}
+
+function sat_license_error_is_connectivity_failure($error)
+{
+    if (!is_wp_error($error)) {
+        return false;
+    }
+
+    return in_array(
+        $error->get_error_code(),
+        [
+            'sat_license_transport_error',
+            'sat_license_invalid_response',
+            'http_request_failed',
+        ],
+        true
+    );
+}
+
+function sat_apply_license_grace_if_available($error)
+{
+    if (!sat_license_error_is_connectivity_failure($error)) {
+        return false;
+    }
+
+    $entitlement = sat_get_entitlement();
+
+    if (
+        empty($entitlement)
+        || !in_array(
+            $entitlement['status'] ?? '',
+            ['active', 'trial', 'grace'],
+            true
+        )
+        || !sat_license_in_grace_window()
+    ) {
+        return false;
+    }
+
+    $entitlement['status'] = 'grace';
+    $entitlement['source'] = 'cached';
+
+    sat_save_entitlement($entitlement);
+
+    return true;
+}
+
+function sat_mark_entitlement_from_server_error($error)
+{
+    if (!is_wp_error($error)) {
+        return;
+    }
+
+    $code = $error->get_error_code();
+    $entitlement = sat_get_entitlement();
+
+    if (empty($entitlement) || !is_array($entitlement)) {
+        return;
+    }
+
+    if (
+        strpos($code, 'license_') === 0
+        || strpos($code, 'activation_') === 0
+        || $code === 'product_mismatch'
+    ) {
+        if ($code === 'license_expired') {
+            $entitlement['status'] = 'expired';
+        } elseif ($code === 'license_revoked') {
+            $entitlement['status'] = 'revoked';
+        } else {
+            $entitlement['status'] = 'inactive';
+        }
+
+        $entitlement['source'] = 'server';
+        sat_save_entitlement($entitlement);
+    }
+}
+
+function sat_run_license_validation($manual = false)
+{
+    if (sat_dev_premium_enabled()) {
+        return true;
+    }
+
+    if (!get_option('sat_license_installation_token', '')) {
+        return new WP_Error(
+            'sat_license_token_missing',
+            'No active license is stored for this site.'
+        );
+    }
+
+    $response = sat_license_validate_remote();
+
+    if (is_wp_error($response)) {
+        if (sat_apply_license_grace_if_available($response)) {
+            return new WP_Error(
+                'sat_license_grace',
+                'The licensing server could not be reached. Premium remains available during the grace period.'
+            );
+        }
+
+        sat_mark_entitlement_from_server_error($response);
+
+        return $response;
+    }
+
+    $applied = sat_apply_server_entitlement_response($response);
+
+    if (is_wp_error($applied)) {
+        return $applied;
+    }
+
+    return true;
+}
+
+function sat_license_heartbeat_event()
+{
+    sat_run_license_validation(false);
+}
+
+add_action(
+    'sat_license_heartbeat',
+    'sat_license_heartbeat_event'
+);
+
+function sat_schedule_license_heartbeat()
+{
+    if (
+        sat_dev_premium_enabled()
+        || !get_option('sat_license_installation_token', '')
+    ) {
+        return;
+    }
+
+    if (!wp_next_scheduled('sat_license_heartbeat')) {
+        wp_schedule_event(
+            time() + 300,
+            'daily',
+            'sat_license_heartbeat'
+        );
+    }
+}
+
+add_action(
+    'init',
+    'sat_schedule_license_heartbeat'
+);
+
+function sat_unschedule_license_heartbeat()
+{
+    $timestamp = wp_next_scheduled('sat_license_heartbeat');
+
+    if ($timestamp) {
+        wp_unschedule_event(
+            $timestamp,
+            'sat_license_heartbeat'
+        );
+    }
 }
 
 function sat_handle_license_activation()
@@ -103,6 +265,8 @@ function sat_handle_license_activation()
                 $applied->get_error_message()
             );
         } else {
+            sat_schedule_license_heartbeat();
+
             sat_set_premium_notice(
                 'success',
                 !empty($response['message'])
@@ -167,6 +331,8 @@ function sat_handle_coupon_redemption()
                 $applied->get_error_message()
             );
         } else {
+            sat_schedule_license_heartbeat();
+
             sat_set_premium_notice(
                 'success',
                 !empty($response['message'])
@@ -187,6 +353,88 @@ add_action(
     'sat_handle_coupon_redemption'
 );
 
+function sat_handle_license_check()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions.');
+    }
+
+    check_admin_referer('sat_check_license');
+
+    $result = sat_run_license_validation(true);
+
+    if (is_wp_error($result)) {
+        $type = $result->get_error_code() === 'sat_license_grace'
+            ? 'warning'
+            : 'error';
+
+        sat_set_premium_notice(
+            $type,
+            $result->get_error_message()
+        );
+    } else {
+        sat_set_premium_notice(
+            'success',
+            'License checked successfully. Your entitlement is up to date.'
+        );
+    }
+
+    wp_safe_redirect(
+        admin_url('admin.php?page=site-admin-toolkit&tab=premium')
+    );
+    exit;
+}
+
+add_action(
+    'admin_post_sat_check_license',
+    'sat_handle_license_check'
+);
+
+function sat_handle_license_deactivation()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions.');
+    }
+
+    check_admin_referer('sat_deactivate_license');
+
+    $response = sat_license_deactivate_remote();
+
+    if (is_wp_error($response)) {
+        sat_set_premium_notice(
+            'error',
+            $response->get_error_message()
+        );
+
+        wp_safe_redirect(
+            admin_url('admin.php?page=site-admin-toolkit&tab=premium')
+        );
+        exit;
+    }
+
+    sat_clear_entitlement();
+    sat_clear_license_activation();
+    delete_option('sat_license_installation_token');
+    sat_unschedule_license_heartbeat();
+
+    sat_set_premium_notice(
+        'success',
+        !empty($response['message'])
+            ? $response['message']
+            : 'This site has been deactivated.'
+    );
+
+    wp_safe_redirect(
+        admin_url('admin.php?page=site-admin-toolkit&tab=premium')
+    );
+    exit;
+}
+
+add_action(
+    'admin_post_sat_deactivate_license',
+    'sat_handle_license_deactivation'
+);
+
 function sat_handle_clear_dev_entitlement()
 {
     if (!current_user_can('manage_options')) {
@@ -196,7 +444,9 @@ function sat_handle_clear_dev_entitlement()
     check_admin_referer('sat_clear_entitlement');
 
     sat_clear_entitlement();
+    sat_clear_license_activation();
     delete_option('sat_license_installation_token');
+    sat_unschedule_license_heartbeat();
 
     sat_set_premium_notice(
         'success',

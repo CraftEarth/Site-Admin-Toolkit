@@ -1,7 +1,14 @@
-﻿<?php
+<?php
 
 if (!defined('ABSPATH')) {
     exit;
+}
+
+function sat_license_product_slug()
+{
+    return defined('SAT_LICENSE_PRODUCT')
+        ? sanitize_key(SAT_LICENSE_PRODUCT)
+        : 'site-admin-toolkit';
 }
 
 function sat_license_api_configured()
@@ -42,7 +49,10 @@ function sat_license_api_request($path, array $payload)
     );
 
     if (is_wp_error($response)) {
-        return $response;
+        return new WP_Error(
+            'sat_license_transport_error',
+            $response->get_error_message()
+        );
     }
 
     $status = wp_remote_retrieve_response_code($response);
@@ -60,24 +70,73 @@ function sat_license_api_request($path, array $payload)
 
     if ($status < 200 || $status >= 300) {
         return new WP_Error(
-            'sat_license_server_error',
+            !empty($body['code'])
+                ? sanitize_key($body['code'])
+                : 'sat_license_server_error',
             !empty($body['message'])
                 ? sanitize_text_field($body['message'])
-                : 'The licensing server rejected the request.'
+                : 'The licensing server rejected the request.',
+            [
+                'http_status' => absint($status),
+                'body' => $body,
+            ]
         );
     }
 
     return $body;
 }
 
+function sat_license_common_payload()
+{
+    return [
+        'product' => sat_license_product_slug(),
+        'site_url' => home_url(),
+        'installation_id' => sat_get_installation_id(),
+        'plugin_version' => defined('SAT_VERSION')
+            ? SAT_VERSION
+            : '',
+    ];
+}
+
 function sat_license_activate_remote($license_key)
 {
+    $payload = sat_license_common_payload();
+    $payload['license_key'] = $license_key;
+
     return sat_license_api_request(
         'v1/licenses/activate',
+        $payload
+    );
+}
+
+function sat_coupon_redeem_remote($coupon)
+{
+    $payload = sat_license_common_payload();
+    $payload['coupon'] = $coupon;
+
+    return sat_license_api_request(
+        'v1/coupons/redeem',
+        $payload
+    );
+}
+
+function sat_license_validate_remote()
+{
+    $token = get_option('sat_license_installation_token', '');
+
+    if (!$token) {
+        return new WP_Error(
+            'sat_license_token_missing',
+            'No active installation token is stored for this site.'
+        );
+    }
+
+    return sat_license_api_request(
+        'v1/licenses/validate',
         [
-            'license_key' => $license_key,
-            'site_url' => home_url(),
+            'installation_token' => $token,
             'installation_id' => sat_get_installation_id(),
+            'product' => sat_license_product_slug(),
             'plugin_version' => defined('SAT_VERSION')
                 ? SAT_VERSION
                 : '',
@@ -85,17 +144,23 @@ function sat_license_activate_remote($license_key)
     );
 }
 
-function sat_coupon_redeem_remote($coupon)
+function sat_license_deactivate_remote()
 {
+    $token = get_option('sat_license_installation_token', '');
+
+    if (!$token) {
+        return new WP_Error(
+            'sat_license_token_missing',
+            'No active installation token is stored for this site.'
+        );
+    }
+
     return sat_license_api_request(
-        'v1/coupons/redeem',
+        'v1/licenses/deactivate',
         [
-            'coupon' => $coupon,
-            'site_url' => home_url(),
+            'installation_token' => $token,
             'installation_id' => sat_get_installation_id(),
-            'plugin_version' => defined('SAT_VERSION')
-                ? SAT_VERSION
-                : '',
+            'product' => sat_license_product_slug(),
         ]
     );
 }

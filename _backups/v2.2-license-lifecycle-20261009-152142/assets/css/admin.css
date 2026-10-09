@@ -740,38 +740,3 @@
         width: 100%;
     }
 }
-
-/* ==========================================================
-   v2.2 License Lifecycle
-   ========================================================== */
-
-.sat-license-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-}
-
-.sat-license-actions form {
-    margin: 0;
-}
-
-.sat-license-actions .button {
-    margin: 0;
-}
-
-.sat-premium-status-grid {
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-}
-
-@media (max-width: 700px) {
-    .sat-license-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .sat-license-actions form,
-    .sat-license-actions .button {
-        width: 100%;
-    }
-}

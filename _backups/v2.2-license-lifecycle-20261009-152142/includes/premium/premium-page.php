@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -8,13 +8,6 @@ function sat_premium_status_class($summary)
 {
     if (sat_dev_premium_enabled()) {
         return 'good';
-    }
-
-    $entitlement = sat_get_entitlement();
-    $status = $entitlement['status'] ?? 'inactive';
-
-    if ($status === 'grace') {
-        return 'warning';
     }
 
     return sat_current_plan() === 'free'
@@ -33,10 +26,6 @@ function sat_render_premium()
     $free_features = sat_features_by_plan('free');
     $premium_features = sat_features_by_plan('premium');
     $api_configured = sat_license_api_configured();
-    $entitlement = sat_get_entitlement();
-    $policy = sat_get_license_policy();
-    $has_token = (bool) get_option('sat_license_installation_token', '');
-    $is_active = sat_entitlement_is_active($entitlement);
 
     ?>
     <div class="sat-panel sat-premium-panel">
@@ -47,9 +36,9 @@ function sat_render_premium()
                 <h2>Site Admin Toolkit Premium</h2>
 
                 <p>
-                    Premium licensing is validated automatically while
-                    preserving a short offline grace period if the licensing
-                    service is temporarily unavailable.
+                    Upgrade from core WordPress security visibility to
+                    deeper history, automation, integrations and
+                    infrastructure-level monitoring.
                 </p>
             </div>
 
@@ -61,17 +50,7 @@ function sat_render_premium()
 
         <?php if ($notice) : ?>
 
-            <?php
-            $notice_class = 'notice-error';
-
-            if ($notice['type'] === 'success') {
-                $notice_class = 'notice-success';
-            } elseif ($notice['type'] === 'warning') {
-                $notice_class = 'notice-warning';
-            }
-            ?>
-
-            <div class="notice <?php echo esc_attr($notice_class); ?> inline">
+            <div class="notice <?php echo $notice['type'] === 'success' ? 'notice-success' : 'notice-error'; ?> inline">
                 <p><?php echo esc_html($notice['message']); ?></p>
             </div>
 
@@ -83,18 +62,6 @@ function sat_render_premium()
                 <p>
                     <strong>Developer Premium Mode is enabled.</strong>
                     All registered features are unlocked locally for testing.
-                </p>
-            </div>
-
-        <?php elseif (($entitlement['status'] ?? '') === 'grace') : ?>
-
-            <div class="notice notice-warning inline">
-                <p>
-                    <strong>Offline grace period active.</strong>
-                    The license server could not be reached. Premium remains
-                    available temporarily for up to
-                    <?php echo esc_html((string) $policy['grace_days']); ?>
-                    days from the last successful validation.
                 </p>
             </div>
 
@@ -118,68 +85,11 @@ function sat_render_premium()
             </div>
 
             <div class="sat-card">
-                <span>Sites</span>
-                <strong><?php echo esc_html($summary['sites']); ?></strong>
-            </div>
-
-            <div class="sat-card">
-                <span>Last Checked</span>
-                <strong><?php echo esc_html($summary['last_checked']); ?></strong>
-            </div>
-
-            <div class="sat-card">
-                <span>Validation</span>
-                <strong>
-                    Every <?php echo esc_html((string) $policy['validate_interval_hours']); ?> hours
-                </strong>
-            </div>
-
-            <div class="sat-card">
-                <span>Grace Period</span>
-                <strong><?php echo esc_html((string) $policy['grace_days']); ?> days</strong>
-            </div>
-
-            <div class="sat-card">
                 <span>Licensing API</span>
                 <strong><?php echo $api_configured ? 'Connected' : 'Not Configured'; ?></strong>
             </div>
 
         </div>
-
-        <?php if ($has_token && !sat_dev_premium_enabled()) : ?>
-
-            <div class="sat-premium-box">
-
-                <h3>License Controls</h3>
-
-                <p>
-                    Manually refresh the entitlement or deactivate this
-                    installation and free its license seat.
-                </p>
-
-                <div class="sat-license-actions">
-
-                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                        <input type="hidden" name="action" value="sat_check_license">
-                        <?php wp_nonce_field('sat_check_license'); ?>
-                        <?php submit_button('Check License Now', 'secondary', 'submit', false); ?>
-                    </form>
-
-                    <form
-                        method="post"
-                        action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
-                        onsubmit="return confirm('Deactivate Premium on this site and free its license seat?');"
-                    >
-                        <input type="hidden" name="action" value="sat_deactivate_license">
-                        <?php wp_nonce_field('sat_deactivate_license'); ?>
-                        <?php submit_button('Deactivate This Site', 'delete', 'submit', false); ?>
-                    </form>
-
-                </div>
-
-            </div>
-
-        <?php endif; ?>
 
         <div class="sat-premium-columns">
 
@@ -233,8 +143,8 @@ function sat_render_premium()
                 <h3>Redeem a Coupon</h3>
 
                 <p>
-                    Coupons can create trials or promotional Premium
-                    entitlements when validated by your licensing server.
+                    Coupons can create trials, discounts or promotional
+                    Premium entitlements when validated by your licensing server.
                 </p>
 
                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
@@ -263,7 +173,9 @@ function sat_render_premium()
                 </form>
 
                 <p class="description">
-                    Coupon creation remains private to the licensing dashboard.
+                    Coupon creation is intentionally not available inside
+                    customer installations. Coupons will be created from
+                    your private licensing dashboard.
                 </p>
 
             </div>
@@ -280,6 +192,7 @@ function sat_render_premium()
 
                     <div>
                         <strong><?php echo esc_html($feature['name']); ?></strong>
+
                         <p><?php echo esc_html($feature['description']); ?></p>
                     </div>
 
@@ -303,6 +216,7 @@ function sat_render_premium()
 
                     <div>
                         <strong><?php echo esc_html($feature['name']); ?></strong>
+
                         <p><?php echo esc_html($feature['description']); ?></p>
                     </div>
 
@@ -316,13 +230,20 @@ function sat_render_premium()
 
         </div>
 
-        <?php if ($is_active && !sat_dev_premium_enabled()) : ?>
+        <div class="sat-premium-note">
+            <strong>Architecture:</strong>
+            Future modules should use
+            <code>sat_feature_enabled('feature_name')</code>
+            instead of implementing their own license checks.
+        </div>
 
-            <div class="sat-premium-note">
-                <strong>License lifecycle active:</strong>
-                this installation validates automatically and can be
-                deactivated from the controls above to free its site seat.
-            </div>
+        <?php if (sat_current_plan() !== 'free' && !sat_dev_premium_enabled()) : ?>
+
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                <input type="hidden" name="action" value="sat_clear_entitlement">
+                <?php wp_nonce_field('sat_clear_entitlement'); ?>
+                <?php submit_button('Clear Cached Entitlement', 'secondary', 'submit', false); ?>
+            </form>
 
         <?php endif; ?>
 
