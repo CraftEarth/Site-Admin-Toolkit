@@ -1039,45 +1039,90 @@ function sat_render_threat_correlation()
 
 
 
-function sat_maybe_sync_correlated_incidents()
+function sat_incident_cron_schedules($schedules)
 {
-    if (!is_admin()) {
+    $schedules['sat_every_15_minutes'] = [
+        'interval' => 15 * MINUTE_IN_SECONDS,
+        'display'  => 'Every 15 Minutes',
+    ];
+
+    return $schedules;
+}
+
+add_filter(
+    'cron_schedules',
+    'sat_incident_cron_schedules'
+);
+
+function sat_schedule_incident_sync()
+{
+    $hook = 'sat_incident_sync_event';
+    $next = wp_next_scheduled($hook);
+
+    if (!sat_feature_enabled('incident_workflow')) {
+        if ($next) {
+            wp_unschedule_event($next, $hook);
+        }
+
         return;
     }
 
-    if (!current_user_can('manage_options')) {
+    if (!$next) {
+        wp_schedule_event(
+            time() + MINUTE_IN_SECONDS,
+            'sat_every_15_minutes',
+            $hook
+        );
+    }
+}
+
+add_action(
+    'init',
+    'sat_schedule_incident_sync',
+    20
+);
+
+function sat_run_incident_sync_cron()
+{
+    if (!sat_feature_enabled('incident_workflow')) {
         return;
     }
 
-    $last_run = (int) get_option(
-        'sat_incident_sync_last_run',
-        0
-    );
+    $lock_name = 'sat_incident_sync_lock';
+    $lock_time = (int) get_option($lock_name, 0);
+    $now = time();
 
-    /*
-     * Avoid doing correlation work on every admin request.
-     * Run at most once every 15 minutes.
-     */
     if (
-        $last_run > 0 &&
-        (time() - $last_run) < (15 * MINUTE_IN_SECONDS)
+        $lock_time > 0 &&
+        ($now - $lock_time) < (20 * MINUTE_IN_SECONDS)
     ) {
         return;
     }
 
-    sat_sync_correlated_incidents(24);
+    if ($lock_time > 0) {
+        delete_option($lock_name);
+    }
 
-    update_option(
-        'sat_incident_sync_last_run',
-        time(),
-        false
-    );
+    if (!add_option($lock_name, $now, '', false)) {
+        return;
+    }
+
+    try {
+        sat_sync_correlated_incidents(24);
+
+        update_option(
+            'sat_incident_sync_last_run',
+            time(),
+            false
+        );
+    } finally {
+        delete_option($lock_name);
+    }
 }
 
 add_action(
-    'admin_init',
-    'sat_maybe_sync_correlated_incidents',
-    30
+    'sat_incident_sync_event',
+    'sat_run_incident_sync_cron'
 );
 
 function sat_get_incidents($limit = 100)
