@@ -2,3 +2,7 @@
 Thumbs.db
 *.log
 .env
+
+# Local backup files
+*.bak
+*.proxy-backup
