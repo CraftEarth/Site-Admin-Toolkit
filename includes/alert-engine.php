@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -51,6 +51,10 @@ function sat_save_alert_settings()
     check_admin_referer(
         'sat_save_alert_settings'
     );
+
+    if (!sat_feature_enabled('custom_alert_rules')) {
+        wp_die('Premium Custom Alert Thresholds are required.');
+    }
 
     $failed =
         isset(
@@ -627,3 +631,4 @@ function sat_render_alert_console()
     </div>
     <?php
 }
+

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -19,7 +19,10 @@ function sat_register_settings()
                 'maintenance_title' => 'Site Maintenance',
                 'maintenance_message' =>
                     'We are currently performing scheduled maintenance. Please check back soon.',
-                'maintenance_return' => ''
+                'maintenance_return' => '',
+                'trusted_proxy_enabled' => 0,
+                'trusted_proxy_header' => 'x_forwarded_for',
+                'trusted_proxy_ips' => ''
             ]
         ]
     );
@@ -91,6 +94,37 @@ function sat_register_settings()
         'site-admin-toolkit',
         'sat_maintenance_section'
     );
+
+    add_settings_section(
+        'sat_trusted_proxy_section',
+        'Trusted Reverse Proxy',
+        'sat_trusted_proxy_section_callback',
+        'site-admin-toolkit'
+    );
+
+    add_settings_field(
+        'sat_trusted_proxy_enabled',
+        'Enable Trusted Proxy',
+        'sat_trusted_proxy_enabled_field',
+        'site-admin-toolkit',
+        'sat_trusted_proxy_section'
+    );
+
+    add_settings_field(
+        'sat_trusted_proxy_header',
+        'Client IP Header',
+        'sat_trusted_proxy_header_field',
+        'site-admin-toolkit',
+        'sat_trusted_proxy_section'
+    );
+
+    add_settings_field(
+        'sat_trusted_proxy_ips',
+        'Trusted Proxy IPs / CIDRs',
+        'sat_trusted_proxy_ips_field',
+        'site-admin-toolkit',
+        'sat_trusted_proxy_section'
+    );
 }
 
 add_action(
@@ -125,6 +159,28 @@ function sat_sanitize_settings($input)
         'maintenance_return' =>
             sanitize_text_field(
                 $input['maintenance_return'] ?? ''
+            ),
+
+        'trusted_proxy_enabled' =>
+            !empty($input['trusted_proxy_enabled']) ? 1 : 0,
+
+        'trusted_proxy_header' =>
+            in_array(
+                $input['trusted_proxy_header'] ?? '',
+                [
+                    'x_forwarded_for',
+                    'cf_connecting_ip',
+                    'true_client_ip',
+                    'x_real_ip',
+                ],
+                true
+            )
+                ? $input['trusted_proxy_header']
+                : 'x_forwarded_for',
+
+        'trusted_proxy_ips' =>
+            sanitize_textarea_field(
+                $input['trusted_proxy_ips'] ?? ''
             )
     ];
 }
@@ -257,6 +313,83 @@ function sat_maintenance_return_field()
 
     <p class="description">
         Optional. Leave blank if there is no estimated return time.
+    </p>
+    <?php
+}
+
+
+
+function sat_trusted_proxy_section_callback()
+{
+    if (!sat_feature_enabled('trusted_proxy_support')) {
+        echo '<p><strong>Premium feature.</strong> Activate Premium to configure trusted proxy handling.</p>';
+        return;
+    }
+
+    echo '<p>Only forwarding headers from explicitly trusted proxy IPs or CIDR ranges will be accepted.</p>';
+}
+
+function sat_trusted_proxy_enabled_field()
+{
+    $options = get_option('sat_settings', []);
+    $locked = !sat_feature_enabled('trusted_proxy_support');
+    ?>
+    <label>
+        <input
+            type="checkbox"
+            name="sat_settings[trusted_proxy_enabled]"
+            value="1"
+            <?php checked(!empty($options['trusted_proxy_enabled'])); ?>
+            <?php disabled($locked); ?>
+        >
+        Trust configured reverse proxies
+    </label>
+    <?php
+}
+
+function sat_trusted_proxy_header_field()
+{
+    $options = get_option('sat_settings', []);
+    $value = $options['trusted_proxy_header'] ?? 'x_forwarded_for';
+    $locked = !sat_feature_enabled('trusted_proxy_support');
+    ?>
+    <select
+        name="sat_settings[trusted_proxy_header]"
+        <?php disabled($locked); ?>
+    >
+        <option value="x_forwarded_for" <?php selected($value, 'x_forwarded_for'); ?>>
+            X-Forwarded-For
+        </option>
+        <option value="cf_connecting_ip" <?php selected($value, 'cf_connecting_ip'); ?>>
+            CF-Connecting-IP
+        </option>
+        <option value="true_client_ip" <?php selected($value, 'true_client_ip'); ?>>
+            True-Client-IP
+        </option>
+        <option value="x_real_ip" <?php selected($value, 'x_real_ip'); ?>>
+            X-Real-IP
+        </option>
+    </select>
+    <?php
+}
+
+function sat_trusted_proxy_ips_field()
+{
+    $options = get_option('sat_settings', []);
+    $value = $options['trusted_proxy_ips'] ?? '';
+    $locked = !sat_feature_enabled('trusted_proxy_support');
+    ?>
+    <textarea
+        name="sat_settings[trusted_proxy_ips]"
+        rows="6"
+        class="large-text code"
+        placeholder="127.0.0.1&#10;10.0.0.0/8&#10;192.168.1.10"
+        <?php disabled($locked); ?>
+    ><?php echo esc_textarea($value); ?></textarea>
+
+    <p class="description">
+        One IP or CIDR range per line. Forwarded headers are ignored unless
+        REMOTE_ADDR matches one of these trusted proxies.
     </p>
     <?php
 }

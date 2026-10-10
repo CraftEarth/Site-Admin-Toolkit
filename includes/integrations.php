@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -30,13 +30,43 @@ function sat_integration_defaults()
  */
 function sat_get_integration_settings()
 {
-    return wp_parse_args(
+    $settings = wp_parse_args(
         get_option(
             'sat_integration_settings',
             []
         ),
         sat_integration_defaults()
     );
+
+    /*
+     * Enforce Premium entitlements at the data layer.
+     *
+     * Stored settings alone never grant access to a
+     * Premium integration.
+     */
+    if (
+        function_exists('sat_feature_enabled')
+        && !sat_feature_enabled('email_automation')
+    ) {
+        $settings['email_enabled'] = 0;
+    }
+
+    if (
+        function_exists('sat_feature_enabled')
+        && !sat_feature_enabled('webhook_integrations')
+    ) {
+        $settings['webhook_enabled'] = 0;
+    }
+
+    if (
+        function_exists('sat_feature_enabled')
+        && !sat_feature_enabled('zoho_integration')
+    ) {
+        $settings['zoho_enabled'] = 0;
+        $settings['zoho_flow_enabled'] = 0;
+    }
+
+    return $settings;
 }
 
 
@@ -340,6 +370,10 @@ function sat_test_zoho_connection()
     check_admin_referer(
         'sat_test_zoho_connection'
     );
+
+    if (!sat_feature_enabled('zoho_integration')) {
+        wp_die('Premium Zoho Integration is required.');
+    }
 
     $result =
         sat_zoho_get_access_token();
@@ -1169,6 +1203,159 @@ function sat_render_integrations()
         </form>
 
 
+        <?php if (sat_feature_enabled('scheduled_reports')) : ?>
+
+            <?php
+            $sat_last_report =
+                get_option(
+                    'sat_last_scheduled_report',
+                    []
+                );
+
+            $sat_next_report =
+                wp_next_scheduled(
+                    'sat_scheduled_security_report_event'
+                );
+
+            $sat_report_status =
+                isset($_GET['sat_report_status'])
+                    ? sanitize_key(
+                        wp_unslash(
+                            $_GET['sat_report_status']
+                        )
+                    )
+                    : '';
+            ?>
+
+            <hr>
+
+            <h3>
+                Scheduled Security Reports
+            </h3>
+
+            <p>
+                Premium security summaries are automatically
+                generated and emailed once per week.
+            </p>
+
+            <?php if ($sat_report_status === 'sent') : ?>
+
+                <div class="notice notice-success inline">
+                    <p>
+                        Security report sent successfully.
+                    </p>
+                </div>
+
+            <?php elseif ($sat_report_status === 'failed') : ?>
+
+                <div class="notice notice-error inline">
+                    <p>
+                        The security report could not be sent.
+                        Check the WordPress mail configuration.
+                    </p>
+                </div>
+
+            <?php endif; ?>
+
+            <table class="widefat striped"
+                   style="max-width:700px;margin-bottom:16px;">
+
+                <tbody>
+
+                    <tr>
+                        <th style="width:220px;">
+                            Last report sent
+                        </th>
+
+                        <td>
+                            <?php
+                            echo !empty(
+                                $sat_last_report['sent_at']
+                            )
+                                ? esc_html(
+                                    $sat_last_report['sent_at']
+                                )
+                                : 'Not sent yet';
+                            ?>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Last recipient
+                        </th>
+
+                        <td>
+                            <?php
+                            echo !empty(
+                                $sat_last_report['email']
+                            )
+                                ? esc_html(
+                                    $sat_last_report['email']
+                                )
+                                : '—';
+                            ?>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th>
+                            Next scheduled report
+                        </th>
+
+                        <td>
+                            <?php
+                            echo $sat_next_report
+                                ? esc_html(
+                                    wp_date(
+                                        'Y-m-d H:i:s',
+                                        $sat_next_report
+                                    )
+                                )
+                                : 'Not currently scheduled';
+                            ?>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+            <form
+                method="post"
+                action="<?php
+                    echo esc_url(
+                        admin_url(
+                            'admin-post.php'
+                        )
+                    );
+                ?>"
+                style="margin-bottom:20px;"
+            >
+
+                <input
+                    type="hidden"
+                    name="action"
+                    value="sat_send_security_report_now"
+                >
+
+                <?php
+                wp_nonce_field(
+                    'sat_send_security_report_now'
+                );
+
+                submit_button(
+                    'Send Security Report Now',
+                    'secondary',
+                    'submit',
+                    false
+                );
+                ?>
+
+            </form>
+
+        <?php endif; ?>
+
         <div class="sat-integration-actions">
 
             <form
@@ -1243,6 +1430,12 @@ function sat_render_integrations()
         </div>
 
 
+        <?php
+        if (function_exists('sat_render_server_log_ingestion_panel')) {
+            sat_render_server_log_ingestion_panel();
+        }
+        ?>
+
         <div class="sat-diagnostic-note">
 
             <strong>
@@ -1260,3 +1453,259 @@ function sat_render_integrations()
     </div>
     <?php
 }
+
+/**
+ * Build the Premium weekly security report.
+ */
+function sat_build_scheduled_security_report()
+{
+    global $wpdb;
+
+    $activity_table = sat_activity_table();
+
+    $activity_count = (int) $wpdb->get_var(
+        "
+        SELECT COUNT(*)
+        FROM {$activity_table}
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        "
+    );
+
+    $failed_logins = (int) $wpdb->get_var(
+        "
+        SELECT COUNT(*)
+        FROM {$activity_table}
+        WHERE event_type = 'login_failed'
+          AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        "
+    );
+
+    $open_incidents = 0;
+    $high_risk_incidents = 0;
+
+    if (function_exists('sat_incident_table')) {
+        $incident_table = sat_incident_table();
+
+        $open_incidents = (int) $wpdb->get_var(
+            "
+            SELECT COUNT(*)
+            FROM {$incident_table}
+            WHERE status <> 'resolved'
+            "
+        );
+
+        $high_risk_incidents = (int) $wpdb->get_var(
+            "
+            SELECT COUNT(*)
+            FROM {$incident_table}
+            WHERE status <> 'resolved'
+              AND risk_score >= 50
+            "
+        );
+    }
+
+    $file_events = 0;
+
+    if (function_exists('sat_file_forensics_table')) {
+        $forensics_table = sat_file_forensics_table();
+
+        $file_events = (int) $wpdb->get_var(
+            "
+            SELECT COUNT(*)
+            FROM {$forensics_table}
+            WHERE detected_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            "
+        );
+    }
+
+    $site = home_url();
+
+    $subject =
+        '[Site Admin Toolkit] Weekly Security Report - ' .
+        wp_parse_url($site, PHP_URL_HOST);
+
+    $body =
+        "Site Admin Toolkit - Weekly Security Report\n" .
+        "===========================================\n\n" .
+        "Site: {$site}\n" .
+        "Period: Previous 7 days\n" .
+        "Generated: " . current_time('mysql') . "\n\n" .
+        "SECURITY SUMMARY\n" .
+        "----------------\n" .
+        "Recorded activity events: {$activity_count}\n" .
+        "Failed login attempts: {$failed_logins}\n" .
+        "Open incidents: {$open_incidents}\n" .
+        "High-risk incidents: {$high_risk_incidents}\n" .
+        "File-forensics events: {$file_events}\n\n" .
+        "Review Site Admin Toolkit in WordPress for detailed evidence,\n" .
+        "incident status, file changes, and network activity.\n";
+
+    return [
+        'subject' => $subject,
+        'body' => $body,
+    ];
+}
+
+
+/**
+ * Send the Premium scheduled security report.
+ */
+function sat_send_scheduled_security_report()
+{
+    if (!sat_feature_enabled('scheduled_reports')) {
+        return false;
+    }
+
+    $settings = sat_get_integration_settings();
+
+    $email =
+        !empty($settings['email_address'])
+        && is_email($settings['email_address'])
+            ? $settings['email_address']
+            : get_option('admin_email');
+
+    if (!is_email($email)) {
+        return false;
+    }
+
+    $report = sat_build_scheduled_security_report();
+
+    $sent = wp_mail(
+        $email,
+        $report['subject'],
+        $report['body']
+    );
+
+    if ($sent) {
+        update_option(
+            'sat_last_scheduled_report',
+            [
+                'sent_at' => current_time('mysql'),
+                'email' => $email,
+            ],
+            false
+        );
+    }
+
+
+    return $sent;
+}
+
+
+/**
+ * Schedule weekly Premium security reports.
+ */
+function sat_schedule_security_reports()
+{
+    $hook = 'sat_scheduled_security_report_event';
+
+    if (!sat_feature_enabled('scheduled_reports')) {
+        $timestamp = wp_next_scheduled($hook);
+
+        if ($timestamp) {
+            wp_unschedule_event(
+                $timestamp,
+                $hook
+            );
+        }
+
+        return;
+    }
+
+    if (!wp_next_scheduled($hook)) {
+        wp_schedule_event(
+            time() + HOUR_IN_SECONDS,
+            'weekly',
+            $hook
+        );
+    }
+}
+
+add_action(
+    'init',
+    'sat_schedule_security_reports'
+);
+
+add_action(
+    'sat_scheduled_security_report_event',
+    'sat_send_scheduled_security_report'
+);
+
+
+/**
+ * Remove scheduled security report on plugin deactivation.
+ */
+function sat_clear_scheduled_security_report()
+{
+    $timestamp =
+        wp_next_scheduled(
+            'sat_scheduled_security_report_event'
+        );
+
+    if ($timestamp) {
+        wp_unschedule_event(
+            $timestamp,
+            'sat_scheduled_security_report_event'
+        );
+    }
+}
+
+register_deactivation_hook(
+    SAT_PLUGIN_DIR . 'site-admin-toolkit.php',
+    'sat_clear_scheduled_security_report'
+);
+
+/**
+ * Manually send the Premium scheduled security report.
+ */
+function sat_send_security_report_now()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions.');
+    }
+
+    check_admin_referer(
+        'sat_send_security_report_now'
+    );
+
+    if (!sat_feature_enabled('scheduled_reports')) {
+        wp_safe_redirect(
+            add_query_arg(
+                'sat_report_status',
+                'premium_required',
+                admin_url(
+                    'admin.php?page=site-admin-toolkit&tab=integrations'
+                )
+            )
+        );
+
+        exit;
+    }
+
+    $sent =
+        sat_send_scheduled_security_report();
+
+    wp_safe_redirect(
+        add_query_arg(
+            'sat_report_status',
+            $sent ? 'sent' : 'failed',
+            admin_url(
+                'admin.php?page=site-admin-toolkit&tab=integrations'
+            )
+        )
+    );
+
+    exit;
+}
+
+add_action(
+    'admin_post_sat_send_security_report_now',
+    'sat_send_security_report_now'
+);
+
+
+
+
+
+
+

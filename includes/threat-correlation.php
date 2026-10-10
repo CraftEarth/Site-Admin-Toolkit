@@ -1,8 +1,72 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
 }
+
+define('SAT_INCIDENT_DB_VERSION', '1.0');
+
+function sat_incident_table()
+{
+    global $wpdb;
+
+    return $wpdb->prefix . 'sat_incidents';
+}
+
+function sat_install_incident_table()
+{
+    $installed = get_option('sat_incident_db_version');
+
+    if ($installed === SAT_INCIDENT_DB_VERSION) {
+        return;
+    }
+
+    global $wpdb;
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $table = sat_incident_table();
+    $charset = $wpdb->get_charset_collate();
+
+    $sql = "
+        CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            incident_key CHAR(64) NOT NULL,
+            source_type VARCHAR(60) NOT NULL,
+            source_value VARCHAR(190) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            severity VARCHAR(20) NOT NULL DEFAULT 'warning',
+            risk_score SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            status VARCHAR(20) NOT NULL DEFAULT 'open',
+            acknowledged_by BIGINT UNSIGNED NULL,
+            acknowledged_at DATETIME NULL,
+            investigation_notes LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            last_seen_at DATETIME NOT NULL,
+            resolved_at DATETIME NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY incident_key (incident_key),
+            KEY status (status),
+            KEY source_type (source_type),
+            KEY risk_score (risk_score),
+            KEY updated_at (updated_at)
+        ) {$charset};
+    ";
+
+    dbDelta($sql);
+
+    update_option(
+        'sat_incident_db_version',
+        SAT_INCIDENT_DB_VERSION,
+        false
+    );
+}
+
+add_action(
+    'admin_init',
+    'sat_install_incident_table'
+);
 
 
 /**
@@ -336,6 +400,123 @@ function sat_build_threat_correlation($hours = 24)
 
 
 /**
+ * Persist correlated threats as incidents.
+ */
+function sat_sync_correlated_incidents($hours = 24)
+{
+    if (!sat_feature_enabled('incident_workflow')) {
+        return;
+    }
+
+    global $wpdb;
+
+    $table = sat_incident_table();
+    $data = sat_build_threat_correlation($hours);
+    $now = current_time('mysql');
+
+    foreach ($data['ips'] as $item) {
+
+        $score = absint($item['score']);
+
+        /*
+         * Ignore low-risk / normal activity.
+         */
+        if ($score < 25) {
+            continue;
+        }
+
+        $ip = sanitize_text_field($item['ip']);
+
+        if ($ip === '') {
+            continue;
+        }
+
+        $incident_key = hash(
+            'sha256',
+            'correlated_ip|' . strtolower($ip)
+        );
+
+        $severity = 'warning';
+
+        if ($score >= 80) {
+            $severity = 'critical';
+        } elseif ($score >= 50) {
+            $severity = 'high';
+        }
+
+        $reasons = !empty($item['reasons'])
+            ? implode(', ', $item['reasons'])
+            : 'Correlated suspicious activity';
+
+        $title =
+            'Suspicious activity from ' . $ip;
+
+        $existing = $wpdb->get_row(
+            $wpdb->prepare(
+                "
+                SELECT id, status
+                FROM {$table}
+                WHERE incident_key = %s
+                LIMIT 1
+                ",
+                $incident_key
+            ),
+            ARRAY_A
+        );
+
+        if ($existing) {
+
+            /*
+             * A previously resolved incident is reopened when
+             * new suspicious activity is observed.
+             */
+            $new_status =
+                $existing['status'] === 'resolved'
+                    ? 'open'
+                    : $existing['status'];
+
+            $wpdb->update(
+                $table,
+                [
+                    'title' => $title,
+                    'severity' => $severity,
+                    'risk_score' => $score,
+                    'status' => $new_status,
+                    'last_seen_at' => $now,
+                    'updated_at' => $now,
+                    'resolved_at' =>
+                        $new_status === 'resolved'
+                            ? $now
+                            : null,
+                ],
+                [
+                    'id' => absint($existing['id']),
+                ]
+            );
+
+            continue;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'incident_key' => $incident_key,
+                'source_type' => 'ip',
+                'source_value' => $ip,
+                'title' => $title,
+                'severity' => $severity,
+                'risk_score' => $score,
+                'status' => 'open',
+                'investigation_notes' =>
+                    sanitize_textarea_field($reasons),
+                'created_at' => $now,
+                'updated_at' => $now,
+                'last_seen_at' => $now,
+            ]
+        );
+    }
+}
+/**
  * CSV incident export.
  */
 function sat_export_incident_report()
@@ -648,6 +829,160 @@ function sat_render_threat_correlation()
         </div>
 
 
+        <?php if (sat_feature_enabled('incident_workflow')) : ?>
+
+            <?php
+            $incidents = sat_get_incidents(100);
+            ?>
+
+            <h3>Incident Workflow</h3>
+
+            <?php if (isset($_GET['sat_incident_updated'])) : ?>
+                <div class="notice notice-success inline">
+                    <p>Incident updated successfully.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (empty($incidents)) : ?>
+
+                <div class="sat-log-empty">
+                    No persistent incidents have been recorded yet.
+                </div>
+
+            <?php else : ?>
+
+                <div class="sat-table-scroll">
+
+                    <table class="widefat striped">
+
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Source</th>
+                                <th>Risk</th>
+                                <th>Status</th>
+                                <th>Last Seen</th>
+                                <th>Investigation</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                        <?php foreach ($incidents as $incident) : ?>
+
+                            <tr>
+
+                                <td>
+                                    <?php echo esc_html((string) $incident['id']); ?>
+                                </td>
+
+                                <td>
+                                    <code>
+                                        <?php echo esc_html($incident['source_value']); ?>
+                                    </code>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    echo esc_html(
+                                        strtoupper($incident['severity']) .
+                                        ' - ' .
+                                        (string) $incident['risk_score']
+                                    );
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <?php echo esc_html(ucfirst($incident['status'])); ?>
+                                </td>
+
+                                <td>
+                                    <?php echo esc_html($incident['last_seen_at']); ?>
+                                </td>
+
+                                <td>
+
+                                    <form
+                                        method="post"
+                                        action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
+                                    >
+
+                                        <input
+                                            type="hidden"
+                                            name="action"
+                                            value="sat_update_incident"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="incident_id"
+                                            value="<?php echo esc_attr((string) $incident['id']); ?>"
+                                        >
+
+                                        <?php wp_nonce_field('sat_update_incident'); ?>
+
+                                        <p>
+                                            <select name="incident_status">
+
+                                                <option value="open"
+                                                    <?php selected($incident['status'], 'open'); ?>>
+                                                    Open
+                                                </option>
+
+                                                <option value="acknowledged"
+                                                    <?php selected($incident['status'], 'acknowledged'); ?>>
+                                                    Acknowledged
+                                                </option>
+
+                                                <option value="investigating"
+                                                    <?php selected($incident['status'], 'investigating'); ?>>
+                                                    Investigating
+                                                </option>
+
+                                                <option value="resolved"
+                                                    <?php selected($incident['status'], 'resolved'); ?>>
+                                                    Resolved
+                                                </option>
+
+                                            </select>
+                                        </p>
+
+                                        <p>
+                                            <textarea
+                                                name="investigation_notes"
+                                                rows="4"
+                                                class="large-text"
+                                                placeholder="Investigation notes..."
+                                            ><?php echo esc_textarea($incident['investigation_notes'] ?? ''); ?></textarea>
+                                        </p>
+
+                                        <?php
+                                        submit_button(
+                                            'Save Incident',
+                                            'secondary',
+                                            'submit',
+                                            false
+                                        );
+                                        ?>
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
+
+                        <?php endforeach; ?>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            <?php endif; ?>
+
+        <?php endif; ?>
+
         <h3>Incident Export</h3>
 
         <p>
@@ -701,3 +1036,163 @@ function sat_render_threat_correlation()
     </div>
     <?php
 }
+
+
+
+function sat_maybe_sync_correlated_incidents()
+{
+    if (!is_admin()) {
+        return;
+    }
+
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $last_run = (int) get_option(
+        'sat_incident_sync_last_run',
+        0
+    );
+
+    /*
+     * Avoid doing correlation work on every admin request.
+     * Run at most once every 15 minutes.
+     */
+    if (
+        $last_run > 0 &&
+        (time() - $last_run) < (15 * MINUTE_IN_SECONDS)
+    ) {
+        return;
+    }
+
+    sat_sync_correlated_incidents(24);
+
+    update_option(
+        'sat_incident_sync_last_run',
+        time(),
+        false
+    );
+}
+
+add_action(
+    'admin_init',
+    'sat_maybe_sync_correlated_incidents',
+    30
+);
+
+function sat_get_incidents($limit = 100)
+{
+    global $wpdb;
+
+    $limit = max(1, min(500, absint($limit)));
+
+    return $wpdb->get_results(
+        "
+        SELECT *
+        FROM " . sat_incident_table() . "
+        ORDER BY
+            CASE status
+                WHEN 'open' THEN 1
+                WHEN 'acknowledged' THEN 2
+                WHEN 'investigating' THEN 3
+                WHEN 'resolved' THEN 4
+                ELSE 5
+            END,
+            risk_score DESC,
+            updated_at DESC
+        LIMIT {$limit}
+        ",
+        ARRAY_A
+    );
+}
+
+function sat_handle_incident_update()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions.');
+    }
+
+    check_admin_referer('sat_update_incident');
+
+    if (!sat_feature_enabled('incident_workflow')) {
+        wp_die('Premium incident workflow is not available.');
+    }
+
+    global $wpdb;
+
+    $incident_id = isset($_POST['incident_id'])
+        ? absint($_POST['incident_id'])
+        : 0;
+
+    $status = isset($_POST['incident_status'])
+        ? sanitize_key(wp_unslash($_POST['incident_status']))
+        : '';
+
+    $notes = isset($_POST['investigation_notes'])
+        ? sanitize_textarea_field(
+            wp_unslash($_POST['investigation_notes'])
+        )
+        : '';
+
+    $allowed_statuses = [
+        'open',
+        'acknowledged',
+        'investigating',
+        'resolved',
+    ];
+
+    if (
+        !$incident_id ||
+        !in_array($status, $allowed_statuses, true)
+    ) {
+        wp_die('Invalid incident update.');
+    }
+
+    $now = current_time('mysql');
+
+    $data = [
+        'status' => $status,
+        'investigation_notes' => $notes,
+        'updated_at' => $now,
+    ];
+
+    if ($status === 'acknowledged') {
+        $data['acknowledged_by'] = get_current_user_id();
+        $data['acknowledged_at'] = $now;
+        $data['resolved_at'] = null;
+    }
+
+    if ($status === 'investigating') {
+        $data['resolved_at'] = null;
+    }
+
+    if ($status === 'open') {
+        $data['resolved_at'] = null;
+    }
+
+    if ($status === 'resolved') {
+        $data['resolved_at'] = $now;
+    }
+
+    $wpdb->update(
+        sat_incident_table(),
+        $data,
+        [
+            'id' => $incident_id,
+        ]
+    );
+
+    wp_safe_redirect(
+        admin_url(
+            'admin.php?page=site-admin-toolkit&tab=threats&sat_incident_updated=1'
+        )
+    );
+
+    exit;
+}
+
+add_action(
+    'admin_post_sat_update_incident',
+    'sat_handle_incident_update'
+);
+

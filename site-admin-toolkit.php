@@ -62,6 +62,7 @@ require_once SAT_PLUGIN_DIR . 'includes/threat-correlation.php';
 require_once SAT_PLUGIN_DIR . 'includes/file-integrity.php';
 
 require_once SAT_PLUGIN_DIR . 'includes/network-analytics.php';
+require_once SAT_PLUGIN_DIR . 'includes/server-log-ingestion.php';
 require_once SAT_PLUGIN_DIR . 'includes/alert-engine.php';
 
 require_once SAT_PLUGIN_DIR . 'includes/integrations.php';
@@ -73,4 +74,5 @@ require_once SAT_PLUGIN_DIR . 'includes/premium/feature-gates.php';
 require_once SAT_PLUGIN_DIR . 'includes/premium/licensing-api.php';
 require_once SAT_PLUGIN_DIR . 'includes/premium/license-manager.php';
 require_once SAT_PLUGIN_DIR . 'includes/premium/premium-page.php';
+
 

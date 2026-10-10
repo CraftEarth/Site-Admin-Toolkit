@@ -1,8 +1,65 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
 }
+
+define('SAT_FILE_FORENSICS_DB_VERSION', '1.0');
+
+function sat_file_forensics_table()
+{
+    global $wpdb;
+
+    return $wpdb->prefix . 'sat_file_forensics';
+}
+
+function sat_install_file_forensics_table()
+{
+    $installed = get_option('sat_file_forensics_db_version');
+
+    if ($installed === SAT_FILE_FORENSICS_DB_VERSION) {
+        return;
+    }
+
+    global $wpdb;
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $table = sat_file_forensics_table();
+    $charset = $wpdb->get_charset_collate();
+
+    $sql = "
+        CREATE TABLE {$table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            detected_at DATETIME NOT NULL,
+            change_type VARCHAR(20) NOT NULL,
+            file_path TEXT NOT NULL,
+            file_hash CHAR(64) NULL,
+            previous_hash CHAR(64) NULL,
+            file_size BIGINT UNSIGNED NULL,
+            modified_time DATETIME NULL,
+            risk_level VARCHAR(20) NOT NULL DEFAULT 'info',
+            reason TEXT NULL,
+            PRIMARY KEY (id),
+            KEY detected_at (detected_at),
+            KEY change_type (change_type),
+            KEY risk_level (risk_level)
+        ) {$charset};
+    ";
+
+    dbDelta($sql);
+
+    update_option(
+        'sat_file_forensics_db_version',
+        SAT_FILE_FORENSICS_DB_VERSION,
+        false
+    );
+}
+
+add_action(
+    'admin_init',
+    'sat_install_file_forensics_table'
+);
 
 /**
  * File integrity settings.
@@ -62,6 +119,7 @@ function sat_integrity_ignore_path($path)
         '/cache/',
         '/upgrade/',
         '/backups/',
+        '/_backups/',
         '/backup/',
         '/node_modules/',
         '/vendor/',
@@ -537,6 +595,187 @@ function sat_render_integrity_rows(
 }
 
 
+function sat_forensics_event_exists($change_type, $file_path, $file_hash, $previous_hash)
+{
+    global $wpdb;
+
+    $table = sat_file_forensics_table();
+
+    $existing = $wpdb->get_var(
+        $wpdb->prepare(
+            "
+            SELECT id
+            FROM {$table}
+            WHERE change_type = %s
+              AND file_path = %s
+              AND (
+                    (file_hash = %s)
+                    OR (file_hash IS NULL AND %s = '')
+                  )
+              AND (
+                    (previous_hash = %s)
+                    OR (previous_hash IS NULL AND %s = '')
+                  )
+            LIMIT 1
+            ",
+            $change_type,
+            $file_path,
+            $file_hash ?: '',
+            $file_hash ?: '',
+            $previous_hash ?: '',
+            $previous_hash ?: ''
+        )
+    );
+
+    return !empty($existing);
+}
+function sat_record_file_forensics(array $comparison)
+{
+    if (!sat_feature_enabled('advanced_file_forensics')) {
+        return;
+    }
+
+    if (empty($comparison['has_baseline'])) {
+        return;
+    }
+
+    global $wpdb;
+
+    $table = sat_file_forensics_table();
+    $now = current_time('mysql');
+
+    foreach ($comparison['new'] as $path => $info) {
+
+        if (
+            sat_forensics_event_exists(
+                'new',
+                $path,
+                $info['hash'] ?? '',
+                ''
+            )
+        ) {
+            continue;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'detected_at' => $now,
+                'change_type' => 'new',
+                'file_path' => $path,
+                'file_hash' => $info['hash'] ?? null,
+                'previous_hash' => null,
+                'file_size' => isset($info['size'])
+                    ? absint($info['size'])
+                    : null,
+                'modified_time' => !empty($info['mtime'])
+                    ? gmdate('Y-m-d H:i:s', (int) $info['mtime'])
+                    : null,
+                'risk_level' => 'warning',
+                'reason' => 'New file detected after baseline creation.',
+            ]
+        );
+    }
+
+    foreach ($comparison['modified'] as $path => $info) {
+
+        if (
+            sat_forensics_event_exists(
+                'modified',
+                $path,
+                $info['new']['hash'] ?? '',
+                $info['old']['hash'] ?? ''
+            )
+        ) {
+            continue;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'detected_at' => $now,
+                'change_type' => 'modified',
+                'file_path' => $path,
+                'file_hash' => $info['new']['hash'] ?? null,
+                'previous_hash' => $info['old']['hash'] ?? null,
+                'file_size' => isset($info['new']['size'])
+                    ? absint($info['new']['size'])
+                    : null,
+                'modified_time' => !empty($info['new']['mtime'])
+                    ? gmdate('Y-m-d H:i:s', (int) $info['new']['mtime'])
+                    : null,
+                'risk_level' => 'warning',
+                'reason' => 'File hash changed from the stored baseline.',
+            ]
+        );
+    }
+
+    foreach ($comparison['deleted'] as $path => $info) {
+
+        if (
+            sat_forensics_event_exists(
+                'deleted',
+                $path,
+                '',
+                $info['hash'] ?? ''
+            )
+        ) {
+            continue;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'detected_at' => $now,
+                'change_type' => 'deleted',
+                'file_path' => $path,
+                'file_hash' => null,
+                'previous_hash' => $info['hash'] ?? null,
+                'file_size' => isset($info['size'])
+                    ? absint($info['size'])
+                    : null,
+                'modified_time' => !empty($info['mtime'])
+                    ? gmdate('Y-m-d H:i:s', (int) $info['mtime'])
+                    : null,
+                'risk_level' => 'warning',
+                'reason' => 'File present in the baseline is no longer present.',
+            ]
+        );
+    }
+
+    foreach ($comparison['suspicious'] as $path => $finding) {
+
+        if (
+            sat_forensics_event_exists(
+                'suspicious',
+                $path,
+                '',
+                ''
+            )
+        ) {
+            continue;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'detected_at' => $now,
+                'change_type' => 'suspicious',
+                'file_path' => $path,
+                'file_hash' => null,
+                'previous_hash' => null,
+                'file_size' => null,
+                'modified_time' => null,
+                'risk_level' => sanitize_key(
+                    $finding['risk'] ?? 'critical'
+                ),
+                'reason' => sanitize_textarea_field(
+                    $finding['reason'] ?? 'Suspicious file detected.'
+                ),
+            ]
+        );
+    }
+}
 /**
  * Render Files / Forensics tab.
  */
@@ -552,6 +791,8 @@ function sat_render_file_integrity()
 
     $comparison =
         sat_integrity_compare();
+
+    sat_record_file_forensics($comparison);
 
     $filesystem =
         sat_integrity_filesystem_checks();
@@ -945,6 +1186,109 @@ function sat_render_file_integrity()
         <?php endif; ?>
 
 
+        <?php if (sat_feature_enabled('advanced_file_forensics')) : ?>
+
+            <?php
+            global $wpdb;
+
+            $forensics_history = $wpdb->get_results(
+                "
+                SELECT
+                    id,
+                    detected_at,
+                    change_type,
+                    file_path,
+                    risk_level,
+                    reason
+                FROM " . sat_file_forensics_table() . "
+                ORDER BY id DESC
+                LIMIT 100
+                ",
+                ARRAY_A
+            );
+            ?>
+
+            <h3>
+                File Forensics History
+            </h3>
+
+            <p>
+                Historical file-change evidence recorded by Premium
+                forensic monitoring.
+            </p>
+
+            <?php if (empty($forensics_history)) : ?>
+
+                <div class="sat-log-empty">
+                    No historical file-forensics events have been recorded yet.
+                </div>
+
+            <?php else : ?>
+
+                <div class="sat-table-scroll">
+
+                    <table class="widefat striped">
+
+                        <thead>
+                            <tr>
+                                <th>Detected</th>
+                                <th>Change</th>
+                                <th>File</th>
+                                <th>Risk</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                        <?php foreach ($forensics_history as $event) : ?>
+
+                            <tr>
+
+                                <td>
+                                    <?php echo esc_html($event['detected_at']); ?>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    echo esc_html(
+                                        ucfirst($event['change_type'])
+                                    );
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <code>
+                                        <?php echo esc_html($event['file_path']); ?>
+                                    </code>
+                                </td>
+
+                                <td>
+                                    <?php
+                                    echo esc_html(
+                                        strtoupper($event['risk_level'])
+                                    );
+                                    ?>
+                                </td>
+
+                                <td>
+                                    <?php echo esc_html($event['reason']); ?>
+                                </td>
+
+                            </tr>
+
+                        <?php endforeach; ?>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            <?php endif; ?>
+
+        <?php endif; ?>
+
         <h3>
             Filesystem Permissions
         </h3>
@@ -1038,3 +1382,13 @@ function sat_render_file_integrity()
     </div>
     <?php
 }
+
+
+
+
+
+
+
+
+
+

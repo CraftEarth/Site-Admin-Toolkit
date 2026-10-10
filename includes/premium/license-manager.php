@@ -463,3 +463,57 @@ add_action(
     'admin_post_sat_clear_entitlement',
     'sat_handle_clear_dev_entitlement'
 );
+
+function sat_handle_buy_premium()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions.');
+    }
+
+    check_admin_referer('sat_buy_premium');
+
+    $response = sat_stripe_checkout_remote('premium');
+
+    if (is_wp_error($response)) {
+        sat_set_premium_notice(
+            'error',
+            $response->get_error_message()
+        );
+
+        wp_safe_redirect(
+            admin_url('admin.php?page=site-admin-toolkit&tab=premium')
+        );
+        exit;
+    }
+
+    $checkout_url = isset($response['checkout']['url'])
+        ? esc_url_raw($response['checkout']['url'])
+        : '';
+
+    $checkout_host = $checkout_url
+        ? strtolower((string) wp_parse_url($checkout_url, PHP_URL_HOST))
+        : '';
+
+    if (
+        !$checkout_url ||
+        $checkout_host !== 'checkout.stripe.com'
+    ) {
+        sat_set_premium_notice(
+            'error',
+            'The licensing server returned an invalid checkout URL.'
+        );
+
+        wp_safe_redirect(
+            admin_url('admin.php?page=site-admin-toolkit&tab=premium')
+        );
+        exit;
+    }
+
+    wp_redirect($checkout_url, 303);
+    exit;
+}
+
+add_action(
+    'admin_post_sat_buy_premium',
+    'sat_handle_buy_premium'
+);

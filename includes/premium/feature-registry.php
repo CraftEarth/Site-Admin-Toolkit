@@ -98,9 +98,9 @@ function sat_feature_registry()
             'description' => 'Configurable trusted proxy and client-IP handling.',
         ],
         'custom_alert_rules' => [
-            'name' => 'Custom Alert Rules',
+            'name' => 'Custom Alert Thresholds',
             'plan' => 'premium',
-            'description' => 'Custom detection thresholds and future rule logic.',
+            'description' => 'Configure detection thresholds for failed logins, reconnaissance activity, and critical risk scoring.',
         ],
         'incident_workflow' => [
             'name' => 'Incident Workflow',
@@ -138,3 +138,4 @@ function sat_features_by_plan($plan)
         }
     );
 }
+

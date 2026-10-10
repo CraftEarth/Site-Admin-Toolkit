@@ -164,3 +164,17 @@ function sat_license_deactivate_remote()
         ]
     );
 }
+
+function sat_stripe_checkout_remote($plan = 'premium')
+{
+    $user = wp_get_current_user();
+
+    return sat_license_api_request(
+        'v1/stripe/checkout',
+        [
+            'product' => sat_license_product_slug(),
+            'plan' => sanitize_key($plan),
+            'email' => sanitize_email($user->user_email),
+        ]
+    );
+}

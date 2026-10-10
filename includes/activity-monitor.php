@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -84,15 +84,211 @@ function sat_activity_table()
  *
  * We intentionally do not trust proxy headers automatically.
  */
+function sat_ip_matches_trusted_proxy($ip, $rule)
+{
+    $ip = trim((string) $ip);
+    $rule = trim((string) $rule);
+
+    if (
+        !filter_var($ip, FILTER_VALIDATE_IP)
+        || $rule === ''
+    ) {
+        return false;
+    }
+
+    /*
+     * Exact IP match.
+     */
+    if (
+        filter_var($rule, FILTER_VALIDATE_IP)
+        && hash_equals($rule, $ip)
+    ) {
+        return true;
+    }
+
+    /*
+     * CIDR match.
+     */
+    if (strpos($rule, '/') === false) {
+        return false;
+    }
+
+    list($network, $prefix) =
+        array_pad(explode('/', $rule, 2), 2, null);
+
+    if (
+        !filter_var($network, FILTER_VALIDATE_IP)
+        || !ctype_digit((string) $prefix)
+    ) {
+        return false;
+    }
+
+    $ip_bin = @inet_pton($ip);
+    $network_bin = @inet_pton($network);
+
+    if (
+        $ip_bin === false
+        || $network_bin === false
+        || strlen($ip_bin) !== strlen($network_bin)
+    ) {
+        return false;
+    }
+
+    $max_bits = strlen($ip_bin) * 8;
+    $prefix = (int) $prefix;
+
+    if ($prefix < 0 || $prefix > $max_bits) {
+        return false;
+    }
+
+    $full_bytes = intdiv($prefix, 8);
+    $remaining_bits = $prefix % 8;
+
+    if (
+        $full_bytes > 0
+        && substr($ip_bin, 0, $full_bytes)
+            !== substr($network_bin, 0, $full_bytes)
+    ) {
+        return false;
+    }
+
+    if ($remaining_bits === 0) {
+        return true;
+    }
+
+    $mask = (0xFF << (8 - $remaining_bits)) & 0xFF;
+
+    return (
+        ord($ip_bin[$full_bytes]) & $mask
+    ) === (
+        ord($network_bin[$full_bytes]) & $mask
+    );
+}
+
+function sat_trusted_proxy_rules()
+{
+    $options = get_option('sat_settings', []);
+
+    $raw = isset($options['trusted_proxy_ips'])
+        ? (string) $options['trusted_proxy_ips']
+        : '';
+
+    $rules = preg_split(
+        '/[\r\n,]+/',
+        $raw
+    );
+
+    if (!is_array($rules)) {
+        return [];
+    }
+
+    return array_values(
+        array_filter(
+            array_map('trim', $rules)
+        )
+    );
+}
+
+function sat_ip_is_trusted_proxy($ip)
+{
+    foreach (sat_trusted_proxy_rules() as $rule) {
+        if (sat_ip_matches_trusted_proxy($ip, $rule)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function sat_activity_ip()
 {
-    return isset($_SERVER['REMOTE_ADDR'])
+    $remote_addr = isset($_SERVER['REMOTE_ADDR'])
         ? sanitize_text_field(
-            wp_unslash(
-                $_SERVER['REMOTE_ADDR']
-            )
+            wp_unslash($_SERVER['REMOTE_ADDR'])
         )
         : '';
+
+    if (!filter_var($remote_addr, FILTER_VALIDATE_IP)) {
+        return '';
+    }
+
+    /*
+     * Forwarded headers are Premium-only and must be explicitly enabled.
+     */
+    if (!sat_feature_enabled('trusted_proxy_support')) {
+        return $remote_addr;
+    }
+
+    $options = get_option('sat_settings', []);
+
+    if (empty($options['trusted_proxy_enabled'])) {
+        return $remote_addr;
+    }
+
+    /*
+     * Never trust forwarding headers unless the directly connected
+     * peer is on the administrator's trusted proxy list.
+     */
+    if (!sat_ip_is_trusted_proxy($remote_addr)) {
+        return $remote_addr;
+    }
+
+    $header = isset($options['trusted_proxy_header'])
+        ? sanitize_key($options['trusted_proxy_header'])
+        : 'x_forwarded_for';
+
+    $server_key = [
+        'x_forwarded_for' => 'HTTP_X_FORWARDED_FOR',
+        'cf_connecting_ip' => 'HTTP_CF_CONNECTING_IP',
+        'true_client_ip' => 'HTTP_TRUE_CLIENT_IP',
+        'x_real_ip' => 'HTTP_X_REAL_IP',
+    ][$header] ?? 'HTTP_X_FORWARDED_FOR';
+
+    if (empty($_SERVER[$server_key])) {
+        return $remote_addr;
+    }
+
+    $forwarded = sanitize_text_field(
+        wp_unslash($_SERVER[$server_key])
+    );
+
+    /*
+     * X-Forwarded-For may contain a chain.
+     * Walk from the trusted proxy side backwards until we find
+     * the first address that is not a trusted proxy.
+     */
+    if ($header === 'x_forwarded_for') {
+        $chain = array_map(
+            'trim',
+            explode(',', $forwarded)
+        );
+
+        $chain[] = $remote_addr;
+
+        for ($i = count($chain) - 1; $i >= 0; $i--) {
+            $candidate = $chain[$i];
+
+            if (!filter_var($candidate, FILTER_VALIDATE_IP)) {
+                continue;
+            }
+
+            if (sat_ip_is_trusted_proxy($candidate)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return $remote_addr;
+    }
+
+    /*
+     * Single-IP proxy headers are accepted only because REMOTE_ADDR
+     * has already been verified as a trusted proxy.
+     */
+    return filter_var($forwarded, FILTER_VALIDATE_IP)
+        ? $forwarded
+        : $remote_addr;
 }
 
 
@@ -556,7 +752,7 @@ function sat_activity_cleanup()
 {
     global $wpdb;
 
-    $retention_days = 14;
+    $retention_days = sat_feature_enabled('extended_history') ? 90 : 14;
 
     $cutoff =
         gmdate(
@@ -1264,4 +1460,6 @@ function sat_render_activity_monitor()
     </div>
     <?php
 }
+
+
 

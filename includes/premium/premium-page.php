@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -181,6 +181,64 @@ function sat_render_premium()
 
         <?php endif; ?>
 
+        <div class="sat-premium-box">
+
+            <h3>Premium Access</h3>
+
+            <?php if (!$is_active && !sat_dev_premium_enabled()) : ?>
+
+                <p>
+                    Upgrade Site Admin Toolkit to Premium and unlock all
+                    Premium features for this installation.
+                </p>
+
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+
+                    <input type="hidden" name="action" value="sat_buy_premium">
+
+                    <?php wp_nonce_field('sat_buy_premium'); ?>
+
+                    <?php
+                    submit_button(
+                        'Buy Premium',
+                        'primary',
+                        'submit',
+                        false
+                    );
+                    ?>
+
+                </form>
+
+            <?php elseif ($is_active && !sat_dev_premium_enabled()) : ?>
+
+                <p>
+                    Premium is currently active on this site.
+                </p>
+
+                <p>
+                    <strong>Current plan:</strong>
+                    <?php echo esc_html($summary['plan']); ?>
+                </p>
+
+                <button type="button" class="button button-secondary" disabled>
+                    Manage / Upgrade Plan
+                </button>
+
+                <p class="description">
+                    Plan upgrades and customer account management will be
+                    available through the licensing portal.
+                </p>
+
+            <?php else : ?>
+
+                <p>
+                    Developer Premium Mode is active. Checkout is disabled
+                    while local Premium testing is enabled.
+                </p>
+
+            <?php endif; ?>
+
+        </div>
         <div class="sat-premium-columns">
 
             <div class="sat-premium-box">
@@ -329,3 +387,4 @@ function sat_render_premium()
     </div>
     <?php
 }
+

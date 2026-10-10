@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 if (!defined('ABSPATH')) {
     exit;
@@ -364,6 +364,10 @@ function sat_create_outbound_baseline()
         'sat_create_outbound_baseline'
     );
 
+    if (!sat_feature_enabled('advanced_outbound_monitoring')) {
+        wp_die('Premium Advanced Outbound Monitoring is required.');
+    }
+
     $observed =
         sat_get_observed_outbound_domains();
 
@@ -409,6 +413,16 @@ add_action(
  */
 function sat_get_new_outbound_domains()
 {
+    if (!sat_feature_enabled('advanced_outbound_monitoring')) {
+        return [
+            'has_baseline' => false,
+            'baseline' => [],
+            'new' => [],
+            'observed' => [],
+            'premium_locked' => true,
+        ];
+    }
+
     $baseline =
         get_option(
             'sat_outbound_domain_baseline',
@@ -1068,153 +1082,174 @@ function sat_render_network_analytics()
             Outbound Domain Baseline
         </h3>
 
-        <?php
-        if (
-            !$domains[
-                'has_baseline'
-            ]
-        ) :
-        ?>
+        <?php if (!sat_feature_enabled('advanced_outbound_monitoring')) : ?>
 
             <div class="sat-diagnostic-note">
 
                 <strong>
-                    No outbound baseline exists.
+                    Premium feature:
                 </strong>
 
-                Create a baseline after reviewing the currently
-                observed external destinations.
+                Advanced Outbound Monitoring compares observed
+                external destinations against a trusted baseline
+                and highlights newly seen domains.
 
             </div>
 
         <?php else : ?>
 
-            <p>
-                Baseline created:
-                <strong>
-                    <?php
-                    echo esc_html(
-                        $domains[
-                            'baseline'
-                        ]['created_at']
-                    );
-                    ?>
-                </strong>
-            </p>
-
             <?php
             if (
-                empty(
-                    $domains['new']
-                )
+                !$domains[
+                    'has_baseline'
+                ]
             ) :
             ?>
 
-                <div class="sat-log-empty">
-                    No new outbound destinations detected.
+                <div class="sat-diagnostic-note">
+
+                    <strong>
+                        No outbound baseline exists.
+                    </strong>
+
+                    Create a baseline after reviewing the currently
+                    observed external destinations.
+
                 </div>
 
             <?php else : ?>
 
-                <table class="widefat striped">
+                <p>
+                    Baseline created:
+                    <strong>
+                        <?php
+                        echo esc_html(
+                            $domains[
+                                'baseline'
+                            ]['created_at']
+                        );
+                        ?>
+                    </strong>
+                </p>
 
-                    <thead>
-                        <tr>
-                            <th>New Destination</th>
-                            <th>Requests</th>
-                            <th>Last Seen</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                    <?php
-                    foreach (
+                <?php
+                if (
+                    empty(
                         $domains['new']
-                        as $domain
-                    ) :
-                    ?>
+                    )
+                ) :
+                ?>
 
-                        <tr>
+                    <div class="sat-log-empty">
+                        No new outbound destinations detected.
+                    </div>
 
-                            <td>
-                                <code>
+                <?php else : ?>
+
+                    <table class="widefat striped">
+
+                        <thead>
+                            <tr>
+                                <th>New Destination</th>
+                                <th>Requests</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                        <?php
+                        foreach (
+                            $domains['new']
+                            as $domain
+                        ) :
+                        ?>
+
+                            <tr>
+
+                                <td>
+                                    <code>
+                                        <?php
+                                        echo esc_html(
+                                            $domain['host']
+                                        );
+                                        ?>
+                                    </code>
+                                </td>
+
+                                <td>
                                     <?php
                                     echo esc_html(
-                                        $domain['host']
+                                        $domain[
+                                            'requests'
+                                        ]
                                     );
                                     ?>
-                                </code>
-                            </td>
+                                </td>
 
-                            <td>
-                                <?php
-                                echo esc_html(
-                                    $domain[
-                                        'requests'
-                                    ]
-                                );
-                                ?>
-                            </td>
+                                <td>
+                                    <?php
+                                    echo esc_html(
+                                        $domain[
+                                            'last_seen'
+                                        ]
+                                    );
+                                    ?>
+                                </td>
 
-                            <td>
-                                <?php
-                                echo esc_html(
-                                    $domain[
-                                        'last_seen'
-                                    ]
-                                );
-                                ?>
-                            </td>
+                            </tr>
 
-                        </tr>
+                        <?php endforeach; ?>
 
-                    <?php endforeach; ?>
+                        </tbody>
 
-                    </tbody>
+                    </table>
 
-                </table>
+                <?php endif; ?>
 
             <?php endif; ?>
 
         <?php endif; ?>
 
-
         <div class="sat-network-actions">
 
-            <form
-                method="post"
-                action="<?php
-                    echo esc_url(
-                        admin_url(
-                            'admin-post.php'
-                        )
-                    );
-                ?>"
-            >
+            <?php if (sat_feature_enabled('advanced_outbound_monitoring')) : ?>
 
-                <input
-                    type="hidden"
-                    name="action"
-                    value="sat_create_outbound_baseline"
+                <form
+                    method="post"
+                    action="<?php
+                        echo esc_url(
+                            admin_url(
+                                'admin-post.php'
+                            )
+                        );
+                    ?>"
                 >
 
-                <?php
-                wp_nonce_field(
-                    'sat_create_outbound_baseline'
-                );
-                ?>
+                    <input
+                        type="hidden"
+                        name="action"
+                        value="sat_create_outbound_baseline"
+                    >
 
-                <?php
-                submit_button(
-                    'Create / Rebuild Outbound Baseline',
-                    'secondary',
-                    'submit',
-                    false
-                );
-                ?>
+                    <?php
+                    wp_nonce_field(
+                        'sat_create_outbound_baseline'
+                    );
+                    ?>
 
-            </form>
+                    <?php
+                    submit_button(
+                        'Create / Rebuild Outbound Baseline',
+                        'secondary',
+                        'submit',
+                        false
+                    );
+                    ?>
+
+                </form>
+
+            <?php endif; ?>
 
 
             <form
@@ -1256,3 +1291,6 @@ function sat_render_network_analytics()
     </div>
     <?php
 }
+
+
+
