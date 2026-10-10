@@ -61,10 +61,7 @@ function sat_activity_install()
     );
 }
 
-add_action(
-    'admin_init',
-    'sat_activity_install'
-);
+
 
 
 /**
@@ -764,22 +761,95 @@ function sat_activity_cleanup()
             )
         );
 
-    $wpdb->query(
-        $wpdb->prepare(
-            "
-            DELETE FROM " .
-            sat_activity_table() .
-            "
-            WHERE created_at < %s
-            ",
-            $cutoff
-        )
-    );
+    $table = sat_activity_table();
+
+    $batch_size = 1000;
+    $max_batches = 25;
+
+    for ($batch = 0; $batch < $max_batches; $batch++) {
+        $deleted = $wpdb->query(
+            $wpdb->prepare(
+                "
+                DELETE FROM {$table}
+                WHERE created_at < %s
+                ORDER BY id ASC
+                LIMIT %d
+                ",
+                $cutoff,
+                $batch_size
+            )
+        );
+
+        if (
+            $deleted === false ||
+            $deleted < $batch_size
+        ) {
+            break;
+        }
+    }
+}
+
+/**
+ * Ensure activity retention cleanup runs in the background.
+ */
+function sat_schedule_activity_cleanup()
+{
+    if (!wp_next_scheduled('sat_activity_cleanup_event')) {
+        wp_schedule_event(
+            time() + HOUR_IN_SECONDS,
+            'daily',
+            'sat_activity_cleanup_event'
+        );
+    }
 }
 
 add_action(
-    'admin_init',
-    'sat_activity_cleanup'
+    'init',
+    'sat_schedule_activity_cleanup',
+    20
+);
+
+
+/**
+ * Run activity cleanup from WP-Cron with overlap protection.
+ */
+function sat_run_activity_cleanup_cron()
+{
+    $lock_name = 'sat_activity_cleanup_lock';
+    $lock_time = (int) get_option($lock_name, 0);
+    $now = time();
+
+    if (
+        $lock_time > 0 &&
+        ($now - $lock_time) < HOUR_IN_SECONDS
+    ) {
+        return;
+    }
+
+    if ($lock_time > 0) {
+        delete_option($lock_name);
+    }
+
+    if (!add_option($lock_name, $now, '', false)) {
+        return;
+    }
+
+    try {
+        sat_activity_cleanup();
+
+        update_option(
+            'sat_activity_cleanup_last_run',
+            time(),
+            false
+        );
+    } finally {
+        delete_option($lock_name);
+    }
+}
+
+add_action(
+    'sat_activity_cleanup_event',
+    'sat_run_activity_cleanup_cron'
 );
 
 

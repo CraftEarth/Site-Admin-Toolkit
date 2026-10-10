@@ -56,10 +56,7 @@ function sat_install_file_forensics_table()
     );
 }
 
-add_action(
-    'admin_init',
-    'sat_install_file_forensics_table'
-);
+
 
 /**
  * File integrity settings.

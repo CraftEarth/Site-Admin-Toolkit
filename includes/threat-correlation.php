@@ -63,10 +63,7 @@ function sat_install_incident_table()
     );
 }
 
-add_action(
-    'admin_init',
-    'sat_install_incident_table'
-);
+
 
 
 /**

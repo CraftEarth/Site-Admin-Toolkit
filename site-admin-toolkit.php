@@ -3,7 +3,7 @@
  * Plugin Name: Site Admin Toolkit
  * Plugin URI: https://github.com/CraftEarth
  * Description: Lightweight WordPress administration toolkit with site information, dashboard tools, announcements, and reusable admin features.
- * Version: 2.2.3
+ * Version: 2.2.4
  * Author: William Murphy / CraftEarth
  * Author URI: https://github.com/CraftEarth
  * License: GPL-2.0-or-later
@@ -14,7 +14,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAT_VERSION', '2.2.3');
+define('SAT_VERSION', '2.2.4');
+define('SAT_DB_VERSION', '1.0');
 define('SAT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -66,6 +67,7 @@ require_once SAT_PLUGIN_DIR . 'includes/server-log-ingestion.php';
 require_once SAT_PLUGIN_DIR . 'includes/alert-engine.php';
 
 require_once SAT_PLUGIN_DIR . 'includes/integrations.php';
+require_once SAT_PLUGIN_DIR . 'includes/database-migrations.php';
 
 
 require_once SAT_PLUGIN_DIR . 'includes/premium/feature-registry.php';

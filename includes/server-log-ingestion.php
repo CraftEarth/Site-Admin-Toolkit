@@ -71,10 +71,7 @@ function sat_install_server_log_table()
     );
 }
 
-add_action(
-    'admin_init',
-    'sat_install_server_log_table'
-);
+
 
 
 /**
