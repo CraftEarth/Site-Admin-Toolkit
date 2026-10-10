@@ -1,7 +1,36 @@
 # Site Admin Toolkit
 
-A lightweight WordPress administration plugin built for site owners,
-developers, and support specialists.
+**WordPress Security, Administration, Monitoring & Diagnostics**
+
+Site Admin Toolkit is a modular WordPress administration and defensive-security plugin for site owners, developers, agencies, and support teams.
+
+It brings site health, diagnostics, activity monitoring, threat correlation, file integrity, network visibility, alerting, integrations, Premium entitlement management, and self-hosted updates into one WordPress admin console.
+
+**Current Release: v2.2.3**
+
+---
+
+## Highlights
+
+- Central WordPress administration dashboard
+- Site health and update monitoring
+- Database health and read-only inspection
+- Error-log and diagnostics viewer
+- Maintenance mode
+- WordPress activity monitoring
+- Behavioral threat correlation and risk scoring
+- Network and request analytics
+- Outbound connection monitoring
+- SHA-256 file integrity baselines
+- Security alerts and configurable thresholds
+- Email, webhook, and optional Zoho integrations
+- Free / Premium feature framework
+- Remote license activation and coupon redemption
+- Premium entitlement lifecycle and feature gating
+- Self-hosted WordPress plugin updates
+- Clean uninstall and defensive data handling
+
+---
 
 ## Screenshots
 
@@ -13,275 +42,130 @@ developers, and support specialists.
 
 ![Diagnostics Dashboard](assets/screenshots/diagnostics.png)
 
-## Features
+---
 
-- Custom WordPress admin menu
-- Site overview dashboard
-- WordPress version display
-- PHP version display
-- Database version display
-- Active plugin count
-- User count
-- Post count
-- Page count
-- Active theme information
-- Debug status
-- WordPress dashboard widget
-- Configurable site announcement
-- Announcement enable/disable option
-- `[sat_announcement]` shortcode
-- WordPress Settings API
-- Administrator capability checks
-- WordPress nonce protection through the Settings API
-- Safe option sanitization
-- Clean uninstall
+## Security Console
 
-## Installation
+The administration interface is organized into dedicated operational and security views for:
 
-Download or clone this repository.
+- Overview
+- Health
+- Database
+- Traffic
+- Threats
+- Alerts
+- Files
+- Logs
+- Premium
+- Integrations
+- Settings
 
-Copy the folder:
+Site Admin Toolkit is designed around a defensive-security model:
 
-site-admin-toolkit
+- Read-only monitoring first
+- Human review before destructive action
+- WordPress capability checks
+- Nonce protection for administrative actions
+- Input sanitization and output escaping
+- Minimal sensitive-data collection
+- Explicit trust boundaries for proxy headers
+- Premium feature checks through a centralized entitlement layer
 
-into:
+Threat classifications are behavioral indicators and should not be treated as definitive attribution of malicious intent.
 
-wp-content/plugins/
+---
 
-Then open:
+## Core Features
 
-WordPress Admin
-? Plugins
-? Installed Plugins
-? Site Admin Toolkit
-? Activate
+### Site Health Monitoring
 
-## Usage
-
-After activation, open:
-
-Site Toolkit
-
-from the WordPress admin menu.
-
-### Announcement
-
-Enter an announcement and enable it.
-
-Then add this shortcode to any page or post:
-
-[sat_announcement]
-
-## Security
-
-- Direct PHP file access is blocked
-- Admin pages require `manage_options`
-- Settings use the WordPress Settings API
-- WordPress automatically handles settings nonces
-- Input is sanitized before storage
-- Output is escaped before display
-- Plugin options are removed during uninstall
-
-## Future Roadmap
-
-- Maintenance mode
-- Site health checks
-- Plugin update summary
-- Theme update summary
-- Database maintenance tools
-- Error-log viewer
-- Backup status
-- Admin notes
-- Optional REST API tools
-- Optional Zoho integration
-
-## Technology
-
-- PHP
-- WordPress Plugin API
-- WordPress Settings API
-- WordPress Dashboard API
-- Shortcodes
-- Hooks / Actions
-- Capability checks
-- Sanitization / escaping
-
-## Author
-
-William Murphy / CraftEarth
-
-GitHub:
-https://github.com/CraftEarth
-
-## v1.1.0 - Maintenance Mode
-
-Site Admin Toolkit now includes a built-in maintenance mode for temporarily
-taking a WordPress site offline while administrators continue working.
-
-### Features
-
-- Enable or disable maintenance mode from Site Toolkit
-- Custom maintenance page title
-- Custom visitor message
-- Optional estimated return message
-- Logged-in administrators automatically bypass maintenance mode
-- HTTP 503 Service Unavailable response
-- Retry-After header
-- WordPress AJAX requests remain available
-- WordPress cron remains available
-- REST API requests remain available
-
-### Testing Maintenance Mode
-
-Open:
-
-Site Toolkit ? Maintenance Mode
-
-Enable maintenance mode and save your settings.
-
-Logged-in administrators will continue seeing the normal website.
-
-To view the visitor experience, open the website in an incognito/private
-browser window while logged out.
-
-
-## v1.2.0 - Site Health & Update Monitor
-
-Site Admin Toolkit now includes a maintenance dashboard for common
-WordPress support and troubleshooting tasks.
-
-### Health Checks
+Monitor common WordPress operational conditions including:
 
 - WordPress core update status
 - Plugin update count
 - Theme update count
 - PHP version
-- HTTPS detection
-- WordPress debug mode
+- HTTPS status
+- WordPress debug configuration
 - WP-Cron configuration
-- WordPress REST API availability
-
-### System Information
-
-The dashboard also displays:
-
-- WordPress version
-- PHP version
+- REST API availability
 - Database version
 - Active theme
-- Theme version
 - PHP memory limit
 - Maximum upload size
 - Site URL
 - Home URL
 
-### Status Levels
-
-Checks are categorized as:
+Checks are classified as:
 
 - Good
 - Warning
 - Critical
 
-The dashboard automatically calculates an overall site health status
-based on the individual checks.
-
-
-## v1.3.0 - Error Log & Diagnostics
-
-Site Admin Toolkit now includes a read-only diagnostics panel for
-WordPress support and troubleshooting.
-
-### Diagnostics
-
-- WP_DEBUG status
-- WP_DEBUG_LOG status
-- WP_DEBUG_DISPLAY status
-- PHP display_errors status
-- PHP error log configuration
-- WordPress debug.log detection
-- Debug log size
-- Debug log last modified time
-- Debug log readability
-- Recent WordPress debug log viewer
-
-### Debug Log Viewer
-
-When `wp-content/debug.log` exists and is readable, the toolkit displays
-the most recent 50 log entries directly inside the WordPress admin area.
-
-The viewer reads from the end of the file rather than loading the entire
-log into memory.
-
-### Security
-
-The diagnostics panel is restricted to users with the WordPress
-`manage_options` capability.
-
-Debug logs can contain sensitive technical information and should never
-be exposed publicly.
-
-
-## v1.3.1 - Diagnostics UI Polish
-
-- Converted PHP boolean values from `1/0` to `Enabled/Disabled`
-- Added readable status badges to diagnostics
-- Added contextual explanations for debug settings
-- Clarified WP_DEBUG_DISPLAY behavior when WP_DEBUG is disabled
-- Added production warnings for browser-displayed PHP errors
-- Improved diagnostic card styling
-
-
-## v1.5.0 - Database Health & Safe Maintenance
-
-Site Admin Toolkit now includes a read-only WordPress database inspection
-dashboard.
+---
 
 ### Database Health
 
-- Total WordPress database table size
+Read-only database inspection includes:
+
+- Total WordPress database size
 - Table overhead
 - Autoloaded option count
 - Autoloaded option size
 - Post revision count
 - Trashed post count
 - Spam comment count
-- Expired transient timeout count
-- WordPress database prefix
+- Expired transient count
+- Largest WordPress tables
+- Storage engines
+- Approximate row counts
+- Collation information
+- Database prefix
 
-### Table Inspection
+The database module does not automatically delete, optimize, or modify WordPress records.
 
-The toolkit displays the ten largest WordPress tables along with:
+---
 
-- Storage engine
-- Approximate row count
-- Total table size
-- Table overhead
-- Database collation
+### Error Logs & Diagnostics
 
-### Safety
+Inspect:
 
-Version 1.5 performs inspection only.
+- `WP_DEBUG`
+- `WP_DEBUG_LOG`
+- `WP_DEBUG_DISPLAY`
+- PHP `display_errors`
+- PHP error-log configuration
+- WordPress `debug.log`
+- Debug log size
+- Debug log last modified time
+- Debug log readability
+- Recent log entries
 
-It does not:
+The log viewer reads from the end of the file rather than loading an entire large log into memory.
 
-- Delete revisions
-- Delete transients
-- Remove spam
-- Empty trash
-- Optimize database tables
-- Modify WordPress records
+---
 
-Future maintenance actions will require explicit administrator confirmation
-and should only be used after verifying a current backup.
+### Maintenance Mode
 
+Built-in maintenance mode supports:
 
-## v1.6.0 - Activity & Threat Monitor
+- Custom maintenance page title
+- Custom visitor message
+- Optional estimated return message
+- Automatic administrator bypass
+- HTTP 503 response
+- `Retry-After` header
+- WordPress AJAX availability
+- WordPress cron availability
+- REST API availability
 
-Site Admin Toolkit now includes security activity monitoring and
-basic behavioral threat correlation.
+Administrators can continue working while logged in.
 
-### Monitored Activity
+---
+
+### Activity Monitoring
+
+Selected WordPress-level activity can be recorded for defensive analysis, including:
 
 - Successful logins
 - Failed login attempts
@@ -289,33 +173,13 @@ basic behavioral threat correlation.
 - New WordPress users
 - Plugin activation
 - Plugin deactivation
-- REST API requests
+- REST API activity
 - Inbound POST requests
 - HTTP 404 reconnaissance
-- XML-RPC requests
+- XML-RPC activity
 - Outbound WordPress HTTP/API traffic
 
-### Threat Correlation
-
-Events are assigned risk values and correlated by IP address over the
-previous 24 hours.
-
-Risk classifications:
-
-- Normal
-- Suspicious
-- High Risk
-- Critical
-
-### Local Security Testing
-
-A safe test-event generator allows developers to verify the complete
-monitoring pipeline on localhost without exposing the WordPress
-installation publicly.
-
-### Privacy
-
-The activity monitor does not store:
+Site Admin Toolkit intentionally avoids storing:
 
 - Passwords
 - Cookies
@@ -324,66 +188,11 @@ The activity monitor does not store:
 - Request bodies
 - URL query strings
 
-Activity logs are automatically retained for 14 days in this version.
-
-
-## v1.6.0 - Activity & Threat Monitor
-
-Site Admin Toolkit now includes security activity monitoring and
-basic behavioral threat correlation.
-
-### Monitored Activity
-
-- Successful logins
-- Failed login attempts
-- User logouts
-- New WordPress users
-- Plugin activation
-- Plugin deactivation
-- REST API requests
-- Inbound POST requests
-- HTTP 404 reconnaissance
-- XML-RPC requests
-- Outbound WordPress HTTP/API traffic
+---
 
 ### Threat Correlation
 
-Events are assigned risk values and correlated by IP address over the
-previous 24 hours.
-
-Risk classifications:
-
-- Normal
-- Suspicious
-- High Risk
-- Critical
-
-### Local Security Testing
-
-A safe test-event generator allows developers to verify the complete
-monitoring pipeline on localhost without exposing the WordPress
-installation publicly.
-
-### Privacy
-
-The activity monitor does not store:
-
-- Passwords
-- Cookies
-- Authorization headers
-- API tokens
-- Request bodies
-- URL query strings
-
-Activity logs are automatically retained for 14 days in this version.
-
-
-## v1.7.0 - Advanced Threat Correlation
-
-Site Admin Toolkit now correlates security events into higher-level
-behavior patterns.
-
-### Detection
+Events can be correlated into higher-level behavioral indicators such as:
 
 - Failed-login bursts
 - Multi-username credential spraying
@@ -394,62 +203,20 @@ behavior patterns.
 - Administrative account creation
 - Plugin activation/deactivation activity
 
-### Outbound Visibility
+Risk classifications include:
 
-Outbound WordPress HTTP/API traffic is grouped by destination domain,
-including request counts, failures, and last-seen timestamps.
+- Normal
+- Suspicious
+- High Risk
+- Critical
 
-### Incident Reporting
+Threat classifications represent behavioral indicators and should not be interpreted as definitive proof of malicious intent.
 
-Administrators can export the current 24-hour correlated threat view
-as a CSV incident report.
-
-Threat classifications represent behavioral indicators and should not
-be interpreted as definitive attribution of malicious intent.
-
-
-## v1.8.0 - Tabbed Security Console & File Integrity
-
-Site Admin Toolkit now uses a tabbed operations and security console.
-
-### Console Navigation
-
-- Overview
-- Health
-- Database
-- Traffic
-- Threats
-- Files
-- Logs
-- Settings
-
-### File Integrity & Forensics
-
-Administrators can establish a SHA-256 file baseline and compare future
-scans against the known-good state.
-
-The toolkit detects:
-
-- New files
-- Modified files
-- Deleted files
-- Executable PHP-like files inside WordPress uploads
-- Important filesystem permissions
-- Writable WordPress directories
-
-### Forensics
-
-File integrity findings are indicators and should be reviewed in context.
-Legitimate WordPress, plugin, theme and administrator updates can modify
-files.
-
-
-## v1.9.0 - Network Analytics & Security Alerts
-
-Site Admin Toolkit now includes deeper WordPress-level network analytics
-and configurable security alerting.
+---
 
 ### Network Analytics
+
+WordPress-level request analytics include:
 
 - Top source IP addresses
 - HTTP request method distribution
@@ -457,44 +224,75 @@ and configurable security alerting.
 - Top 404 reconnaissance targets
 - HTTP response-code distribution
 - REST request totals
-- Inbound and outbound activity totals
+- Inbound activity totals
+- Outbound activity totals
 - Slow request detection
-- Outbound domain inventory
+- Outbound destination inventory
 - Outbound destination baselining
 - New outbound domain detection
 - CSV network report export
 
-### Security Alerts
+Traffic blocked upstream by a CDN, WAF, firewall, reverse proxy, Apache, or Nginx may not appear unless server-log ingestion is enabled.
 
-The alert engine correlates information from:
+---
+
+### Outbound Connection Monitoring
+
+WordPress HTTP traffic can be grouped by destination domain.
+
+Administrators can:
+
+- View outbound destinations
+- Establish a known-good outbound baseline
+- Detect previously unseen destinations
+- Review outbound failures
+- Review last-seen activity
+
+A new outbound destination is an investigation indicator and is not automatic proof of compromise.
+
+---
+
+### File Integrity & Forensics
+
+Administrators can establish a SHA-256 baseline and compare later scans against the known-good state.
+
+The toolkit can identify:
+
+- New files
+- Modified files
+- Deleted files
+- File hash changes
+- PHP-like executable files inside uploads
+- Important filesystem permissions
+- Writable WordPress directories
+
+Premium advanced forensics can retain file-change history for investigation.
+
+Legitimate WordPress, plugin, theme, and administrator updates can also modify files.
+
+---
+
+## Security Alerts
+
+The alert engine can correlate information from:
 
 - Threat correlation
 - Failed authentication
 - Reconnaissance activity
 - File integrity monitoring
-- Outbound-domain baselines
+- Outbound destination baselines
 
-Administrators can configure:
+Administrators can configure alert thresholds for selected conditions.
 
-- Failed login threshold
-- 404 reconnaissance threshold
-- Critical correlated-risk threshold
+Premium entitlement gates are used for advanced alert automation and custom rules.
 
-### Scope
+---
 
-Request analytics represent activity processed by WordPress/PHP.
+## Alerts & Integrations
 
-Requests blocked by a firewall, reverse proxy, CDN, Apache/Nginx rule or
-other upstream system may not appear unless server access-log ingestion
-is added.
+All external integrations are optional.
 
-
-## v2.0.0 - Integrations & Alert Delivery
-
-Site Admin Toolkit 2.0 introduces an optional integrations layer for
-external security alert delivery.
-
-### Integrations
+Supported capabilities include:
 
 - Email security alerts
 - Generic JSON webhook alerts
@@ -502,30 +300,20 @@ external security alert delivery.
 - Zoho OAuth connection testing
 - Zoho Flow webhook delivery
 - Manual integration testing
-- Automatic hourly alert dispatch
+- Automatic alert dispatch
 - Duplicate alert suppression
 
-### Zoho Security
+Sites that do not use external integrations can leave them disabled without affecting core monitoring and diagnostics.
 
-Zoho OAuth credentials are not stored in WordPress options.
+---
 
-When direct Zoho OAuth support is enabled, define these values in
-wp-config.php:
+## Zoho Credential Security
 
-    define('SAT_ZOHO_CLIENT_ID', 'your-client-id');
-    define('SAT_ZOHO_CLIENT_SECRET', 'your-client-secret');
-    define('SAT_ZOHO_REFRESH_TOKEN', 'your-refresh-token');
+Zoho OAuth credentials should be defined outside normal WordPress options.
 
-The plugin reads these constants at runtime.
+Example:
 
-Access tokens obtained from Zoho are temporary and are not persisted by
-Site Admin Toolkit.
-
-### Optional Design
-
-Every integration is optional.
-
-Sites that do not use Zoho, webhooks, or email alerts can leave those
-features disabled without affecting diagnostics, monitoring, threat
-correlation, file integrity, or other toolkit features.
-
+```php
+define('SAT_ZOHO_CLIENT_ID', 'your-client-id');
+define('SAT_ZOHO_CLIENT_SECRET', 'your-client-secret');
+define('SAT_ZOHO_REFRESH_TOKEN', 'your-refresh-token');
